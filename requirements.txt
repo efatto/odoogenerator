@@ -1,0 +1,2 @@
+odoorpc
+mysql-connector-python
