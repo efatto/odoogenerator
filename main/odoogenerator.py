@@ -53,7 +53,8 @@ class Connection:
 
     def _create_venv(self, branch=False):
         venv_path = '%s/%s%s' % (
-            self.venv_path, 'odoo',
+            self.venv_path,
+            'odoo',
             self.version)
         py_version = self.python.get('version')
         odoo_repo = 'https://github.com/OCA/OCB.git'
@@ -61,39 +62,36 @@ class Connection:
             subprocess.Popen(['mkdir -p %s' % venv_path], shell=True).wait()
             subprocess.Popen([
                 'python -m venv %s' % venv_path],
-                cwd=venv_path, shell=True).wait()
+                cwd=venv_path, shell=True
+            ).wait()
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
-            subprocess.Popen([
-                'cd %s && git clone --single-branch %s -b %s --depth 1 odoo' % (
-                    venv_path, odoo_repo, branch or self.version)],
-                cwd=venv_path, shell=True).wait()
+            subprocess.Popen(
+                [
+                    'cd %s && git clone --single-branch %s -b %s --depth 1 odoo' % (
+                        venv_path, odoo_repo, branch or self.version
+                    )
+                ], cwd=venv_path, shell=True
+            ).wait()
         elif branch:
-            subprocess.Popen(['cd %s/odoo && git reset --hard origin/%s && git pull '
-                              'origin %s' % (
-                                  venv_path, self.version, branch)],
-                             cwd=venv_path, shell=True).wait()
+            subprocess.Popen(
+                [
+                    'cd %s/odoo && git reset --hard origin/%s && git pull origin %s' % (
+                        venv_path, self.version, branch)
+                ], cwd=venv_path, shell=True
+            ).wait()
         else:
-            subprocess.Popen(['cd %s/odoo && git reset --hard origin/%s && git pull '
-                              '&& git reset --hard origin/%s' % (
-                              venv_path, self.version, self.version)],
-                             cwd=venv_path, shell=True).wait()
+            subprocess.Popen(
+                [
+                    'cd %s/odoo && git reset --hard origin/%s && git pull && git reset --hard origin/%s' % (
+                        venv_path, self.version, self.version
+                    )
+                ], cwd=venv_path, shell=True).wait()
         commands = [
             'bin/pip install -r odoo/requirements.txt',
             'cd odoo && ../bin/pip install -e . ',
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
-        extra_paths = ['%s/addons-extra' % venv_path,
-                       '%s/repos' % venv_path]
-        for path in extra_paths:
-            if not os.path.isdir(path):
-                process = subprocess.Popen(
-                    'mkdir %s' % path, cwd=venv_path, shell=True)
-                process.wait()
-        if os.path.isfile(os.path.join(venv_path, 'migration.log')):
-            process = subprocess.Popen(
-                'rm %s' % 'migration.log', cwd=venv_path, shell=True
-            ).wait()
         repos = self.repositories
         for repo_name in repos:
             repo_url = repos.get(repo_name)
@@ -120,6 +118,7 @@ class Connection:
                     repo_version)
             ], cwd=venv_path, shell=True
             ).wait()
+            # TODO generate etc/oca.cfg with odoo-bin
             # copy modules to create an unique addons path
             # for root, dirs, files in os.walk(
             #         '%s/repos/%s/' % (venv_path, repo_name)):
