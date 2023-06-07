@@ -26,12 +26,12 @@ class Connection:
         return data
 
     def __init__(self, version):
-        self.data = self.load_config(version)
-        self.repository = self.data["repository"][0]
-        self.options = self.data["options"][0]
-        self.queue_job = self.data["queue_job"][0]
-        self.python = self.data["python"][0]
-        self.requirements = self.data["requirements"][0]
+        data = self.load_config(version)
+        self.repositories = data["repositories"][0]
+        self.options = data["options"][0]
+        self.queue_job = data["queue_job"][0]
+        self.python = data["python"][0]
+        self.requirements = data["requirements"][0]
         self.path = os.path.expanduser('~')
         self.version = version
         self.venv_path = os.path.join(self.path, 'Sviluppo', 'Odoo')
@@ -55,7 +55,7 @@ class Connection:
         venv_path = '%s/%s%s' % (
             self.venv_path, 'odoo',
             self.version)
-        py_version = self.data.get('python')[0].get('version')
+        py_version = self.python.get('version')
         odoo_repo = 'https://github.com/OCA/OCB.git'
         if not os.path.isdir(venv_path):
             subprocess.Popen(['mkdir -p %s' % venv_path], shell=True).wait()
@@ -92,20 +92,24 @@ class Connection:
                 process.wait()
         if os.path.isfile(os.path.join(venv_path, 'migration.log')):
             process = subprocess.Popen(
-                'rm %s' % 'migration.log', cwd=venv_path, shell=True)
-            process.wait()
-        repos = config.load_config('openupgrade_repos.yml', self.version)
+                'rm %s' % 'migration.log', cwd=venv_path, shell=True
+            ).wait()
+        repos = self.repositories
         for repo_name in repos:
-            repo_text = repos.get(repo_name)
-            repo = repo_text.split(' ')[0]
-            repo_version = repo_text.split(' ')[1]
+            repo_url = repos.get(repo_name)
+            if ' ' in repo_url:
+                repo = repo_url.split(' ')[0]
+                repo_version = repo_url.split(' ')[1]
+            else:
+                repo = repo_url
+                repo_version = self.version
             if not os.path.isdir('%s/repos/%s' % (venv_path, repo_name)):
                 process = subprocess.Popen([
                     'git clone %s --single-branch -b %s --depth 1 '
                     '%s/repos/%s'
                     % (repo, repo_version, venv_path, repo_name)
-                ], cwd=venv_path, shell=True)
-                process.wait()
+                ], cwd=venv_path, shell=True
+                ).wait()
             process = subprocess.Popen([
                 'cd %s/repos/%s '
                 '&& git remote set-branches --add origin %s '
@@ -114,20 +118,20 @@ class Connection:
                     venv_path, repo_name,
                     repo_version,
                     repo_version)
-            ], cwd=venv_path, shell=True)
-            process.wait()
+            ], cwd=venv_path, shell=True
+            ).wait()
             # copy modules to create an unique addons path
-            for root, dirs, files in os.walk(
-                    '%s/repos/%s/' % (venv_path, repo_name)):
-                for d in dirs:
-                    if d not in ['.git', 'setup']:
-                        process = subprocess.Popen([
-                            "cp -rf %s/repos/%s/%s %s/addons-extra/" %(
-                                venv_path, repo_name, d,
-                                venv_path)
-                        ], cwd=venv_path, shell=True)
-                        process.wait()
-                break
+            # for root, dirs, files in os.walk(
+            #         '%s/repos/%s/' % (venv_path, repo_name)):
+            #     for d in dirs:
+            #         if d not in ['.git', 'setup']:
+            #             process = subprocess.Popen([
+            #                 "cp -rf %s/repos/%s/%s %s/addons-extra/" %(
+            #                     venv_path, repo_name, d,
+            #                     venv_path)
+            #             ], cwd=venv_path, shell=True)
+            #             process.wait()
+            #     break
 
     #### TODO ####
 
