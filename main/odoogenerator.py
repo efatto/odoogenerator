@@ -119,6 +119,7 @@ class Connection:
         commands = [
             'bin/python -m pip install --upgrade pip',
             'bin/pip install -r odoo/requirements.txt',
+            'bin/pip install -r repos/l10n-italy/requirements.txt',
             'bin/pip install -r requirements.txt',
             'cd odoo && ../bin/pip install -e . ',
         ]
@@ -134,13 +135,13 @@ class Connection:
                 repo = repo_url
                 repo_version = self.version
             if not os.path.isdir('%s/repos/%s' % (venv_path, repo_name)):
-                process = subprocess.Popen([
+                subprocess.Popen([
                     'git clone %s --single-branch -b %s --depth 1 '
                     '%s/repos/%s'
                     % (repo, repo_version, venv_path, repo_name)
                 ], cwd=venv_path, shell=True
                 ).wait()
-            process = subprocess.Popen([
+            subprocess.Popen([
                 'cd %s/repos/%s '
                 '&& git remote set-branches --add origin %s '
                 '&& git fetch '
@@ -150,13 +151,13 @@ class Connection:
                     repo_version)
             ], cwd=venv_path, shell=True
             ).wait()
+        self.start_odoo(save_config=True)
 
     def start_odoo(self, update=False, save_config=False):
         """
-        :param version: odoo version to start (8.0, 9.0, 10.0, ...)
         :param update: if True odoo will be updated with -u all and stopped
-        :param migrate: if True start odoo with openupgrade repo
-        :return: odoo instance in self.client if not updated, else nothing
+        :param save_config: if True start odoo, save .odoorc and stop
+        :return: nothing
         """
         venv_path = self.venv_path
         options = self.options
