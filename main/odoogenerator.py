@@ -58,12 +58,21 @@ class Connection:
 
     def _create_venv(self, branch=False):
         venv_path = self.venv_path
-        py_version = self.python.get('version')
+        py_path = os.path.join(
+            os.path.expanduser('~'),
+            '.pyenv',
+            'versions',
+            self.python['version'],
+            'bin',
+            'python',
+        )
         odoo_repo = 'https://github.com/OCA/OCB.git'
         if not os.path.isdir(venv_path):
             subprocess.Popen(['mkdir -p %s' % venv_path], shell=True).wait()
-            subprocess.Popen([
-                'python -m venv %s' % venv_path],
+            subprocess.Popen(
+                [
+                    f'{py_path} -m venv {venv_path}'
+                ],
                 cwd=venv_path, shell=True
             ).wait()
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
