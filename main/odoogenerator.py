@@ -4,6 +4,7 @@ import subprocess
 import time
 import os
 import signal
+from shutil import copy
 
 
 class Connection:
@@ -11,10 +12,7 @@ class Connection:
     def load_config(self, version, file_path=False):
         if not file_path:
             local_path = os.path.join(
-                os.path.expanduser('~'),
-                'Sviluppo',
-                'srvmngt',
-                'odoogenerator_config',
+                self.config_path,
                 'odoo_{}.json'.format(version)
             )
             if not os.path.exists(local_path):
@@ -26,13 +24,18 @@ class Connection:
         return data
 
     def __init__(self, version):
+        self.config_path = os.path.join(
+            os.path.expanduser('~'),
+            'Sviluppo',
+            'srvmngt',
+            'odoogenerator_config'
+        )
         data = self.load_config(version)
         self.repositories = data["repositories"]
         self.options = data["options"]
         self.additional_options = data["additional_options"]
         self.queue_job = data["queue_job"]
         self.python = data["python"]
-        self.requirements = data["requirements"]
         self.path = os.path.expanduser('~')
         self.version = version
         self.venv_path = os.path.join(
@@ -79,27 +82,43 @@ class Connection:
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
             subprocess.Popen(
                 [
-                    'cd %s && git clone --single-branch %s -b %s --depth 1 odoo' % (
-                        venv_path, odoo_repo, branch or self.version
-                    )
+                    f'git clone --single-branch {odoo_repo} -b {branch or self.version}'
+                    f' --depth 1 odoo'
                 ], cwd=venv_path, shell=True
             ).wait()
         elif branch:
             subprocess.Popen(
                 [
-                    'cd %s/odoo && git reset --hard origin/%s && git pull origin %s' % (
-                        venv_path, self.version, branch)
+                    f"""
+                    cd odoo
+                    && git reset --hard origin/{self.version}
+                    && git pull origin {branch}
+                    """
                 ], cwd=venv_path, shell=True
             ).wait()
         else:
             subprocess.Popen(
                 [
-                    'cd %s/odoo && git reset --hard origin/%s && git pull && git reset --hard origin/%s' % (
+                    'cd %s/odoo '
+                    '&& git reset --hard origin/%s '
+                    '&& git pull '
+                    '&& git reset --hard origin/%s' % (
                         venv_path, self.version, self.version
                     )
                 ], cwd=venv_path, shell=True).wait()
+        copy(
+             os.path.join(
+                self.config_path,
+                f'requirements_{self.version}.txt'
+             ),
+             os.path.join(
+                venv_path,
+                'requirements.txt'
+             ),
+        )
         commands = [
             'bin/pip install -r odoo/requirements.txt',
+            'bin/pip install -r requirements.txt',
             'cd odoo && ../bin/pip install -e . ',
         ]
         for command in commands:
