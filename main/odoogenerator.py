@@ -29,6 +29,7 @@ class Connection:
         data = self.load_config(version)
         self.repositories = data["repositories"]
         self.options = data["options"]
+        self.additional_options = data["additional_options"]
         self.queue_job = data["queue_job"]
         self.python = data["python"]
         self.requirements = data["requirements"]
@@ -129,10 +130,6 @@ class Connection:
                     repo_version)
             ], cwd=venv_path, shell=True
             ).wait()
-            # TODO generate etc/oca.cfg ~/.odoorc with odoo-bin -s
-            self.start_odoo(save_config=True)
-
-    #### TODO ####
 
     def start_odoo(self, update=False, save_config=False):
         """
@@ -144,28 +141,61 @@ class Connection:
         venv_path = self.venv_path
         options = self.options
         executable = 'openerp-server' if self.version in ['7.0', '8.0', '9.0'] else 'odoo'
+        addons_path = ','.join(
+            [f'{venv_path}/repos/{repo}' for repo in self.repositories]
+        )
         bash_command = f"""
 ./bin/{executable}
+ -i base
+ --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
+ --db_user={options['db_user']}
  --db_port={options['db_port']}
  --xmlrpc-port={options['http_port']}
+ --log-handler={options['log_handler']}
+ --limit-memory-hard={options['limit_memory_hard']}
+ --limit-memory-soft={options['limit_memory_soft']}
  --limit-time-cpu={options['limit_time_cpu']}
  --limit-time-real={options['limit_time_real']}
- --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons
  --load={options['server_wide_modules']}
         """
         if self.version != '7.0':
             bash_command += f"--data-dir={venv_path}/data_dir "
         if update:
-            bash_command += " -u all -d %s --stop-after-init" % self.db
+            bash_command += " -u all -d %s --stop" % self.db
+        if save_config:
+            bash_command += f" -s --stop"
         process = subprocess.Popen(
-            bash_command.split(), stdout=subprocess.PIPE, cwd=venv_path)
+            bash_command.split(), stdout=subprocess.PIPE, cwd=venv_path
+        )
         self.pid = process.pid
+        if save_config:
+            process.wait()
+            subprocess.Popen(
+                ['cp ~/.odoorc ./'], shell=True, cwd=venv_path
+            ).wait()
+            # add additional_options and queue job
+            if self.additional_options:
+                for additional_option in self.additional_options:
+                    subprocess.Popen(
+                        [f'echo "{additional_option} = {self.additional_options[additional_option]}" >> .odoorc'],
+                        shell=True, cwd=venv_path
+                    ).wait()
+            if self.queue_job:
+                subprocess.Popen(
+                    ['echo "[queue_job]" >> .odoorc'],
+                    shell=True, cwd=venv_path
+                ).wait()
+                for job in self.queue_job:
+                    subprocess.Popen(
+                        [f'echo "{job} = {self.queue_job[job]}" >> .odoorc'],
+                        shell=True, cwd=venv_path
+                    ).wait()
         if update:
             process.wait()
-        else:
-            time.sleep(15)
-            self.odoo_connect()
-        time.sleep(5)
+        # else:
+        #     time.sleep(15)
+            # self.odoo_connect()
+        # time.sleep(5)
 
     def stop_odoo(self):
         if self.pid:
