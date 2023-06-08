@@ -27,14 +27,19 @@ class Connection:
 
     def __init__(self, version):
         data = self.load_config(version)
-        self.repositories = data["repositories"][0]
-        self.options = data["options"][0]
-        self.queue_job = data["queue_job"][0]
-        self.python = data["python"][0]
-        self.requirements = data["requirements"][0]
+        self.repositories = data["repositories"]
+        self.options = data["options"]
+        self.queue_job = data["queue_job"]
+        self.python = data["python"]
+        self.requirements = data["requirements"]
         self.path = os.path.expanduser('~')
         self.version = version
-        self.venv_path = os.path.join(self.path, 'Sviluppo', 'Odoo')
+        self.venv_path = os.path.join(
+            self.path,
+            'Sviluppo',
+            'Odoo',
+            f'odoo{self.version}',
+        )
         self.pg_bin_path = '/usr/lib/postgresql/15/bin/'
         # todo get from system function
         # if self.db_port in [
@@ -52,10 +57,7 @@ class Connection:
         )
 
     def _create_venv(self, branch=False):
-        venv_path = '%s/%s%s' % (
-            self.venv_path,
-            'odoo',
-            self.version)
+        venv_path = self.venv_path
         py_version = self.python.get('version')
         odoo_repo = 'https://github.com/OCA/OCB.git'
         if not os.path.isdir(venv_path):
@@ -118,57 +120,36 @@ class Connection:
                     repo_version)
             ], cwd=venv_path, shell=True
             ).wait()
-            # TODO generate etc/oca.cfg with odoo-bin
-            # copy modules to create an unique addons path
-            # for root, dirs, files in os.walk(
-            #         '%s/repos/%s/' % (venv_path, repo_name)):
-            #     for d in dirs:
-            #         if d not in ['.git', 'setup']:
-            #             process = subprocess.Popen([
-            #                 "cp -rf %s/repos/%s/%s %s/addons-extra/" %(
-            #                     venv_path, repo_name, d,
-            #                     venv_path)
-            #             ], cwd=venv_path, shell=True)
-            #             process.wait()
-            #     break
+            # TODO generate etc/oca.cfg ~/.odoorc with odoo-bin -s
+            self.start_odoo(save_config=True)
 
     #### TODO ####
 
-    def start_odoo(self, version, update=False):
+    def start_odoo(self, update=False, save_config=False):
         """
         :param version: odoo version to start (8.0, 9.0, 10.0, ...)
         :param update: if True odoo will be updated with -u all and stopped
         :param migrate: if True start odoo with openupgrade repo
         :return: odoo instance in self.client if not updated, else nothing
         """
-        venv_path = '%s/%s%s' % (
-            self.venv_path, 'standard',
-            version)
-        load = 'web'
-        if version == '10.0':
-            load = 'web,web_kanban'
-        if version == '12.0':
-            load = 'base,web'
-        executable = 'openerp-server' if version in ['7.0', '8.0', '9.0'] else 'odoo'
-        bash_command = "bin/%s " \
-                       "--db_port=%s --xmlrpc-port=%s " \
-                       "--logfile=%s/migration.log " \
-                       "--limit-time-cpu=600 --limit-time-real=1200 "\
-                       "--addons-path=" \
-                       "%s/odoo/addons,%s/addons-extra%s " \
-                       "--load=%s " % (
-                        executable, self.db_port, self.xmlrpc_port, venv_path,
-                        venv_path, venv_path,
-                        (',%s/odoo/odoo/addons' % venv_path if version not in [
-                            '7.0', '8.0', '9.0'] else ''),
-                        load)
-        cwd_path = '%s/' % venv_path
-        if version != '7.0':
-            bash_command += "--data-dir=%s/data_dir " % venv_path
+        venv_path = self.venv_path
+        options = self.options
+        executable = 'openerp-server' if self.version in ['7.0', '8.0', '9.0'] else 'odoo'
+        bash_command = f"""
+./bin/{executable}
+ --db_port={options['db_port']}
+ --xmlrpc-port={options['http_port']}
+ --limit-time-cpu={options['limit_time_cpu']}
+ --limit-time-real={options['limit_time_real']}
+ --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons
+ --load={options['server_wide_modules']}
+        """
+        if self.version != '7.0':
+            bash_command += f"--data-dir={venv_path}/data_dir "
         if update:
             bash_command += " -u all -d %s --stop-after-init" % self.db
         process = subprocess.Popen(
-            bash_command.split(), stdout=subprocess.PIPE, cwd=cwd_path)
+            bash_command.split(), stdout=subprocess.PIPE, cwd=venv_path)
         self.pid = process.pid
         if update:
             process.wait()
