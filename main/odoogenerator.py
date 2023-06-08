@@ -117,6 +117,7 @@ class Connection:
              ),
         )
         commands = [
+            'bin/python -m pip install --upgrade pip',
             'bin/pip install -r odoo/requirements.txt',
             'bin/pip install -r requirements.txt',
             'cd odoo && ../bin/pip install -e . ',
