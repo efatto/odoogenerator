@@ -103,7 +103,6 @@ class Connection:
         commands = [
             'bin/python -m pip install --upgrade pip',
             'bin/pip install -r odoo/requirements.txt',
-            'bin/pip install -r repos/l10n-italy/requirements.txt',
             'bin/pip install -r requirements.txt',
             'cd odoo && ../bin/pip install -e . ',
         ]
@@ -135,6 +134,10 @@ class Connection:
                     repo_version)
             ], cwd=venv_path, shell=True
             ).wait()
+            if 'ait' not in repo_name and 'reinova' not in repo_name:
+                subprocess.Popen([
+                    f'bin/pip install -r repos/{repo_name}/requirements.txt',
+                ], cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
 
     def start_odoo(self, update=False, save_config=False):
