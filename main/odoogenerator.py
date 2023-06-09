@@ -66,29 +66,21 @@ class Connection:
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
             subprocess.Popen(
                 [
-                    f'git clone --single-branch {odoo_repo} -b {branch or self.version}'
-                    f' --depth 1 odoo'
+                    f'git clone --single-branch {odoo_repo} -b {branch or self.version} --depth 1 odoo'
                 ], cwd=venv_path, shell=True
             ).wait()
         elif branch:
             subprocess.Popen(
                 [
-                    f"""
-                    cd odoo
-                    && git reset --hard origin/{self.version}
-                    && git pull origin {branch}
-                    """
+                    f'cd odoo && git reset --hard origin/{self.version} && git pull origin {branch}  --depth 1'
                 ], cwd=venv_path, shell=True
             ).wait()
         else:
             subprocess.Popen(
                 [
-                    'cd %s/odoo '
-                    '&& git reset --hard origin/%s '
-                    '&& git pull '
-                    '&& git reset --hard origin/%s' % (
-                        venv_path, self.version, self.version
-                    )
+                    f'cd odoo && git reset --hard origin/{self.version} '
+                    f'&& git pull origin {self.version} --depth 1 '
+                    f'&& git reset --hard origin/{self.version}'
                 ], cwd=venv_path, shell=True).wait()
         copy(
              os.path.join(
