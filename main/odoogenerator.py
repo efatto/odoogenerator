@@ -111,20 +111,13 @@ class Connection:
                 repo_version = self.version
             if not os.path.isdir('%s/repos/%s' % (venv_path, repo_name)):
                 subprocess.Popen([
-                    'git clone %s --single-branch -b %s --depth 1 '
-                    '%s/repos/%s'
-                    % (repo, repo_version, venv_path, repo_name)
+                    f'git clone {repo} {venv_path}/repos/{repo_name}',
+                    f'git checkout origin {repo_version}',
                 ], cwd=venv_path, shell=True
                 ).wait()
             subprocess.Popen([
-                'cd %s/repos/%s '
-                '&& git remote set-branches --add origin %s '
-                '&& git fetch '
-                '&& git checkout origin/%s' % (
-                    venv_path, repo_name,
-                    repo_version,
-                    repo_version)
-            ], cwd=venv_path, shell=True
+                f'git pull origin {repo_version}'
+            ], cwd=f'{venv_path}/repos/{repo_name}', shell=True
             ).wait()
             if 'ait' not in repo_name and 'reinova' not in repo_name:
                 requirements_path = os.path.join(venv_path, 'repos', repo_name, 'requirements.txt')
