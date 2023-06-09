@@ -135,9 +135,11 @@ class Connection:
             ], cwd=venv_path, shell=True
             ).wait()
             if 'ait' not in repo_name and 'reinova' not in repo_name:
-                subprocess.Popen([
-                    f'bin/pip install -r repos/{repo_name}/requirements.txt',
-                ], cwd=venv_path, shell=True).wait()
+                requirements_path = os.path.join(venv_path, 'repos', repo_name, 'requirements.txt')
+                if os.path.isfile(requirements_path):
+                    subprocess.Popen([
+                        f'bin/pip install -r {requirements_path}',
+                    ], cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
 
     def start_odoo(self, update=False, save_config=False):
