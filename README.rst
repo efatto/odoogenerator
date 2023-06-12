@@ -1,9 +1,9 @@
 Per usare questa funzionalità, entrare in un console Python e usare questi comandi:
 
 .. code-block:: python
-    sys.path.extend(['/home/sergio/Sviluppo/odoogenerator'])
+    sys.path.extend(["/home/sergio/Sviluppo/odoogenerator"])
     from main import odoogenerator
-    o = odoogenerator.Connection(['14.0', '12.0'])
+    o = odoogenerator.Connection("14.0"|"12.0")
     o._create_venv()
 
 Questo creerà nella cartella `Sviluppo` dell'utente corrente una cartella `Odoo` e una cartella `odoo<versione>` in cui verrà installato Odoo alla versione presente nella configurazione e creato un file di configurazione `.odoorc`
