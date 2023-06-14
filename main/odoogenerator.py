@@ -66,22 +66,23 @@ class Connection:
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
             subprocess.Popen(
                 [
-                    f'git clone --single-branch {odoo_repo} -b {branch or self.version} --depth 1 odoo'
+                    f'git clone --branch {branch or self.version} {odoo_repo} --depth 1 odoo'
                 ], cwd=venv_path, shell=True
             ).wait()
         elif branch:
             subprocess.Popen(
                 [
-                    f'cd odoo && git reset --hard origin/{self.version} && git pull origin {branch}  --depth 1'
-                ], cwd=venv_path, shell=True
+                    f'git reset --hard origin/{self.version}',
+                    f'git pull origin {branch} --depth 1',
+                ], cwd=f'{venv_path}/odoo', shell=True
             ).wait()
         else:
             subprocess.Popen(
                 [
-                    f'cd odoo && git reset --hard origin/{self.version} '
-                    f'&& git pull origin {self.version} --depth 1 '
-                    f'&& git reset --hard origin/{self.version}'
-                ], cwd=venv_path, shell=True).wait()
+                    f'git reset --hard origin/{self.version}',
+                    f'git pull origin {self.version} --depth 1',
+                    f'git reset --hard origin/{self.version}',
+                ], cwd=f'{venv_path}/odoo', shell=True).wait()
         copy(
              os.path.join(
                 self.config_path,
@@ -111,8 +112,7 @@ class Connection:
                 repo_version = self.version
             if not os.path.isdir('%s/repos/%s' % (venv_path, repo_name)):
                 subprocess.Popen([
-                    f'git clone {repo} {venv_path}/repos/{repo_name}',
-                    f'git checkout origin {repo_version}',
+                    f'git clone --branch {repo_version} {repo} {venv_path}/repos/{repo_name}',
                 ], cwd=venv_path, shell=True
                 ).wait()
             subprocess.Popen([
