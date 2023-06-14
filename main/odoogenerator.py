@@ -119,7 +119,7 @@ class Connection:
                 f'git pull origin {repo_version}'
             ], cwd=f'{venv_path}/repos/{repo_name}', shell=True
             ).wait()
-            if 'ait' not in repo_name and 'reinova' not in repo_name:
+            if not any(x in repo_name for x in ['ait', 'reinova']):
                 requirements_path = os.path.join(venv_path, 'repos', repo_name, 'requirements.txt')
                 if os.path.isfile(requirements_path):
                     subprocess.Popen([
