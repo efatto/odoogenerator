@@ -94,9 +94,10 @@ class Connection:
              ),
         )
         commands = [
-            'bin/pip install -r requirements.txt',
-            'bin/pip install -r odoo/requirements.txt',
-            'cd odoo && ../bin/pip install -e . ',
+            'bin/pip install -r requirements.txt --disable-pip-version-check',
+            "sed -i '/^chardet/d' odoo/requirements.txt",
+            'bin/pip install -r odoo/requirements.txt --disable-pip-version-check',
+            'cd odoo && ../bin/pip install -e .  --disable-pip-version-check',
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
@@ -122,7 +123,7 @@ class Connection:
                 requirements_path = os.path.join(venv_path, 'repos', repo_name, 'requirements.txt')
                 if os.path.isfile(requirements_path):
                     subprocess.Popen([
-                        f'bin/pip install -r {requirements_path}',
+                        f'bin/pip install -r {requirements_path} --disable-pip-version-check',
                     ], cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
 
