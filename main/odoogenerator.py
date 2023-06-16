@@ -1,6 +1,13 @@
 import json
-import subprocess
+import odoorpc
+from odoorpc.rpc import build_opener, CookieJar, HTTPCookieProcessor
+from urllib.request import HTTPSHandler
 import os
+import signal
+import ssl
+import sys
+import subprocess
+import time
 from shutil import copy
 
 
@@ -43,6 +50,8 @@ class Connection:
         )
         self.pg_bin_path = '/usr/lib/postgresql/15/bin/'
         # todo get from system function
+        self.pid = False
+        self.client = False
 
     def _create_venv(self, branch=False):
         venv_path = self.venv_path
@@ -127,7 +136,7 @@ class Connection:
                     ], cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
 
-    def start_odoo(self, update=False, save_config=False):
+    def start_odoo(self, update=False, save_config=False, extra_commands=False):
         """
         :param update: if True odoo will be updated with -u all and stopped
         :param save_config: if True start odoo, save .odoorc and stop
@@ -141,7 +150,7 @@ class Connection:
         )
         bash_command = f"""
 ./bin/{executable}
- -i base
+ {extra_commands or '-i base'}
  --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
  --db_user={options['db_user']}
  --db_port={options['db_port']}
@@ -162,6 +171,7 @@ class Connection:
         process = subprocess.Popen(
             bash_command.split(), stdout=subprocess.PIPE, cwd=venv_path
         )
+        self.pid = process.pid
         if save_config:
             process.wait()
             subprocess.Popen(
@@ -184,5 +194,81 @@ class Connection:
                         [f'echo "{job} = {self.queue_job[job]}" >> .odoorc'],
                         shell=True, cwd=venv_path
                     ).wait()
-        if update:
+        if update or extra_commands and 'stop' in extra_commands:
             process.wait()
+
+    def create_it_po(self, module, repo):
+        """
+            crea un db vuoto ed installare il modulo richiesto per poi estrarre l'it.po
+            :param str module: nome del modulo da tradurre
+            :param str repo: nome del repository in cui si trova il modulo
+        """
+        commands = [
+                f'dropdb --if-exists -p {self.options["db_port"]} demo10',
+                f'createdb -p {self.options["db_port"]} demo10',
+            ]
+        for command in commands:
+            subprocess.Popen(
+                command,
+                shell=True, cwd=self.venv_path
+            ).wait()
+        extra_commands = \
+            f'-c .odoorc -i {module} --load-language=it_IT ' \
+            f'-d demo10 ' \
+            f'--stop'
+        self.start_odoo(
+            extra_commands=extra_commands
+        )
+        extra_commands = \
+            f'-c .odoorc -l it_IT --modules={module} ' \
+            f'-d demo10 ' \
+            f'--i18n-export={self.venv_path}/repos/{repo}/{module}/i18n/it.po ' \
+            f'--stop'
+        self.start_odoo(
+            extra_commands=extra_commands
+        )
+
+    ### WIP non in uso ###
+    @staticmethod
+    def _get_opener(verify_ssl=True, sessions=True):
+        handlers = []
+        if not verify_ssl:
+            if (sys.version_info[0] == 2 and sys.version_info >= (2, 7, 9)) or (
+                sys.version_info[0] == 3 and sys.version_info >= (3, 2, 0)
+            ):
+                context = ssl.create_default_context()
+                context.check_hostname = False
+                context.verify_mode = ssl.CERT_NONE
+                handlers.append(HTTPSHandler(context=context))
+            else:
+                print(
+                    (
+                        "verify_ssl could not be established for this "
+                        "python version: %s"
+                    )
+                    % sys.version
+                )
+        if sessions:
+            handlers.append(HTTPCookieProcessor(CookieJar()))
+        opener = build_opener(*handlers)
+        return opener
+
+    def odoo_connect(
+            self, db='demo10', user='admin', password='admin', address='localhost'):
+        verify_ssl = True
+        if self.options['http_port'] != 443:
+            verify_ssl = False
+        self.client = odoorpc.ODOO(
+            host=address,
+            opener=self._get_opener(verify_ssl=verify_ssl),
+            port=self.options['http_port'],
+            protocol="jsonrpc+ssl" if self.options['http_port'] == 443 else "jsonrpc",
+            timeout=3600,
+        )
+        self.client.login(db=db, login=user, password=password)
+        time.sleep(5)
+
+    def stop_odoo(self):
+        if self.pid:
+            os.kill(self.pid, signal.SIGTERM)
+            time.sleep(5)
