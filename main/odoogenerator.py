@@ -181,7 +181,11 @@ class Connection:
         if save_config:
             process.wait()
             subprocess.Popen(
-                ['cp ~/.odoorc ./'], shell=True, cwd=venv_path
+                ['sed -i "/^osv_memory_age_limit/d" ~/.odoorc'],
+                shell=True, cwd=venv_path
+            )
+            subprocess.Popen(
+                ['mv ~/.odoorc ./'], shell=True, cwd=venv_path
             ).wait()
             # add additional_options and queue job
             if self.additional_options:
@@ -201,10 +205,6 @@ class Connection:
                         [f'echo "{job} = {self.queue_job[job]}" >> .odoorc'],
                         shell=True, cwd=venv_path
                     ).wait()
-            subprocess.Popen(
-                ['sed -i "/^osv_memory_age_limit/d" .odoorc'],
-                shell=True, cwd=venv_path
-            )
         if update or extra_commands and 'stop' in extra_commands:
             process.wait()
 
