@@ -104,10 +104,11 @@ class Connection:
         )
         commands = [
             'bin/pip install -r requirements.txt --disable-pip-version-check',
-            "sed -i '/^chardet/d' odoo/requirements.txt",
             'bin/pip install -r odoo/requirements.txt --disable-pip-version-check',
             'cd odoo && ../bin/pip install -e .  --disable-pip-version-check',
         ]
+        if self.version == '14.0':
+            commands.append(["sed -i '/^chardet/d' odoo/requirements.txt"])
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
         repos = self.repositories
@@ -146,7 +147,12 @@ class Connection:
         options = self.options
         executable = 'openerp-server' if self.version in ['7.0', '8.0', '9.0'] else 'odoo'
         addons_path = ','.join(
-            [f'{venv_path}/repos/{repo}' for repo in self.repositories]
+            [f'{venv_path}/repos/{repo}' for repo in self.repositories if any(
+                '__manifest__.py' in f for r, d, f in os.walk(
+                    os.path.join(venv_path, 'repos', repo)
+                )
+            )
+            ]
         )
         bash_command = f"""
 ./bin/{executable}
