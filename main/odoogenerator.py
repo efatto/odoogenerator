@@ -160,7 +160,7 @@ class Connection:
  --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
  --db_user={options['db_user']}
  --db_port={options['db_port']}
- --xmlrpc-port={options['http_port']}
+ --http-port={options['http_port']}
  --log-handler={options['log_handler']}
  --limit-memory-hard={options['limit_memory_hard']}
  --limit-memory-soft={options['limit_memory_soft']}
@@ -187,7 +187,8 @@ class Connection:
             if self.additional_options:
                 for additional_option in self.additional_options:
                     subprocess.Popen(
-                        [f'echo "{additional_option} = {self.additional_options[additional_option]}" >> .odoorc'],
+                        [f'echo "{additional_option} = '
+                         f'{self.additional_options[additional_option]}" >> .odoorc'],
                         shell=True, cwd=venv_path
                     ).wait()
             if self.queue_job:
@@ -200,6 +201,10 @@ class Connection:
                         [f'echo "{job} = {self.queue_job[job]}" >> .odoorc'],
                         shell=True, cwd=venv_path
                     ).wait()
+            subprocess.Popen(
+                ['sed -i "/^osv_memory_age_limit/d" ./.odoorc'],
+                shell=True, cwd=venv_path
+            )
         if update or extra_commands and 'stop' in extra_commands:
             process.wait()
 
