@@ -202,7 +202,7 @@ class Connection:
                         shell=True, cwd=venv_path
                     ).wait()
             subprocess.Popen(
-                ['sed -i "/^osv_memory_age_limit/d" ./.odoorc'],
+                ['sed -i "/^osv_memory_age_limit/d" .odoorc'],
                 shell=True, cwd=venv_path
             )
         if update or extra_commands and 'stop' in extra_commands:
