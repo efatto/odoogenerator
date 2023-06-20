@@ -17,10 +17,11 @@ class Connection:
         if not file_path:
             local_path = os.path.join(
                 self.config_path,
-                'odoo_{}.json'.format(version)
+                f'odoo_{version}.json'
             )
             if not os.path.exists(local_path):
-                raise Exception('Unable to find configuration file for version: %s' % version)
+                raise Exception(
+                    f'Unable to find configuration file for version: {version}')
             file_path = local_path
         f = open(file_path)
         data = json.load(f)
@@ -36,6 +37,7 @@ class Connection:
         )
         data = self.load_config(version)
         self.repositories = data["repositories"]
+        self.private_repositories = data["private-repositories"]
         self.options = data["options"]
         self.additional_options = data["additional_options"]
         self.queue_job = data["queue_job"]
@@ -53,7 +55,7 @@ class Connection:
         self.pid = False
         self.client = False
 
-    def _create_venv(self, branch=False):
+    def _create_venv(self, branch=False, private=False):
         venv_path = self.venv_path
         py_path = os.path.join(
             os.path.expanduser('~'),
@@ -75,7 +77,8 @@ class Connection:
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
             subprocess.Popen(
                 [
-                    f'git clone --branch {branch or self.version} {odoo_repo} --depth 1 odoo'
+                    f'git clone --branch {branch or self.version} {odoo_repo} '
+                    f'--depth 1 odoo'
                 ], cwd=venv_path, shell=True
             ).wait()
         elif branch:
@@ -112,6 +115,8 @@ class Connection:
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
         repos = self.repositories
+        if private:
+            repos |= self.private_repositories
         for repo_name in repos:
             repo_url = repos.get(repo_name)
             if ' ' in repo_url:
@@ -122,18 +127,21 @@ class Connection:
                 repo_version = self.version
             if not os.path.isdir('%s/repos/%s' % (venv_path, repo_name)):
                 subprocess.Popen([
-                    f'git clone --branch {repo_version} {repo} {venv_path}/repos/{repo_name}',
+                    f'git clone --branch {repo_version} {repo} '
+                    f'{venv_path}/repos/{repo_name}',
                 ], cwd=venv_path, shell=True
                 ).wait()
             subprocess.Popen([
                 f'git pull origin {repo_version}'
             ], cwd=f'{venv_path}/repos/{repo_name}', shell=True
             ).wait()
-            if not any(x in repo_name for x in ['ait', 'reinova']):
-                requirements_path = os.path.join(venv_path, 'repos', repo_name, 'requirements.txt')
+            if not any(x in repo_name for x in ['ait', 'reinova', 'liocreo']):
+                requirements_path = os.path.join(
+                    venv_path, 'repos', repo_name, 'requirements.txt')
                 if os.path.isfile(requirements_path):
                     subprocess.Popen([
-                        f'bin/pip install -r {requirements_path} --disable-pip-version-check',
+                        f'bin/pip install -r {requirements_path} '
+                        f'--disable-pip-version-check',
                     ], cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
 
