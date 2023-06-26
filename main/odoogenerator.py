@@ -144,15 +144,24 @@ class Connection:
                     ], cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
 
-    def start_odoo(self, update=False, save_config=False, extra_commands=False):
+    def start_odoo(self, save_config=False, extra_commands=False):
         """
-        :param update: if True odoo will be updated with -u all and stopped
         :param save_config: if True start odoo, save .odoorc and stop
+        :param extra_commands: command to pass after executable
         :return: nothing
         """
         venv_path = self.venv_path
+        venv_python = os.path.join(
+            self.path,
+            ".pyenv",
+            "versions",
+            f"odoo{self.version}",
+            "bin",
+            "python",
+        )
         options = self.options
-        executable = 'openerp-server' if self.version in ['7.0', '8.0', '9.0'] else 'odoo'
+        executable = 'openerp-server' if self.version in ['7.0', '8.0', '9.0'] \
+            else 'odoo-bin'
         addons_path = ','.join(
             [f'{venv_path}/repos/{repo}' for repo in self.repositories if any(
                 '__manifest__.py' in f for r, d, f in os.walk(
@@ -162,7 +171,7 @@ class Connection:
             ]
         )
         bash_command = f"""
-./bin/{executable}
+ {venv_python} ./odoo/{executable}
  {extra_commands or '-i base'}
  --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
  --db_user={options['db_user']}
@@ -177,8 +186,6 @@ class Connection:
         """
         if self.version != '7.0':
             bash_command += f"--data-dir={venv_path}/data_dir "
-        if update:
-            bash_command += " -u all -d %s --stop" % self.db
         if save_config:
             bash_command += f" -s --stop"
         process = subprocess.Popen(
@@ -188,11 +195,11 @@ class Connection:
         if save_config:
             process.wait()
             subprocess.Popen(
-                ['sed -i "/^osv_memory_age_limit/d" ~/.odoorc'],
-                shell=True, cwd=venv_path
-            )
-            subprocess.Popen(
                 ['mv ~/.odoorc ./'], shell=True, cwd=venv_path
+            ).wait()
+            subprocess.Popen(
+                ['sed -i "/^osv_memory_age_limit/d" .odoorc'],
+                shell=True, cwd=venv_path
             ).wait()
             # add additional_options and queue job
             if self.additional_options:
@@ -212,7 +219,7 @@ class Connection:
                         [f'echo "{job} = {self.queue_job[job]}" >> .odoorc'],
                         shell=True, cwd=venv_path
                     ).wait()
-        if update or extra_commands and 'stop' in extra_commands:
+        if extra_commands and 'stop' in extra_commands:
             process.wait()
 
     def create_it_po(self, module, repo):
@@ -246,7 +253,7 @@ class Connection:
             extra_commands=extra_commands
         )
 
-    ### WIP non in uso ###
+    # WIP non in uso ###
     @staticmethod
     def _get_opener(verify_ssl=True, sessions=True):
         handlers = []
