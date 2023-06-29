@@ -57,23 +57,17 @@ class Connection:
 
     def _create_venv(self, branch=False, private=False):
         venv_path = self.venv_path
-        venv_pip = os.path.join(
-            self.path,
-            ".pyenv",
-            "versions",
-            f"odoo{self.version}",
-            "bin",
-            "pip",
-        )
         odoo_repo = 'https://github.com/OCA/OCB.git'
+        base_path = os.path.join(
+            self.path,
+            'Sviluppo',
+            'Odoo')
         if not os.path.isdir(venv_path):
-            subprocess.Popen([f'mkdir -p {venv_path}'], shell=True).wait()
             subprocess.Popen(
                 [
-                    f"pyenv virtualenv {self.python['version']} odoo{self.version}",
-                    f"pyenv local odoo{self.version}",
+                    f"virtualenv -p {self.python['version']} odoo{self.version}",
                 ],
-                cwd=venv_path, shell=True
+                cwd=base_path, shell=True
             ).wait()
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
             subprocess.Popen(
@@ -107,9 +101,9 @@ class Connection:
              ),
         )
         commands = [
-            f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
-            f'{venv_pip} install -r odoo/requirements.txt --disable-pip-version-check',
-            f'cd odoo && {venv_pip} install -e . --disable-pip-version-check',
+            f'bin/pip install -r requirements.txt --disable-pip-version-check',
+            f'bin/pip install -r odoo/requirements.txt --disable-pip-version-check',
+            f'cd odoo && ../bin/pip install -e . --disable-pip-version-check',
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
@@ -139,7 +133,7 @@ class Connection:
                     venv_path, 'repos', repo_name, 'requirements.txt')
                 if os.path.isfile(requirements_path):
                     subprocess.Popen([
-                        f'{venv_pip} install -r {requirements_path} '
+                        f'bin/pip install -r {requirements_path} '
                         f'--disable-pip-version-check',
                     ], cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
@@ -151,14 +145,6 @@ class Connection:
         :return: nothing
         """
         venv_path = self.venv_path
-        venv_python = os.path.join(
-            self.path,
-            ".pyenv",
-            "versions",
-            f"odoo{self.version}",
-            "bin",
-            "python",
-        )
         options = self.options
         executable = 'openerp-server' if self.version in ['7.0', '8.0', '9.0'] \
             else 'odoo-bin'
@@ -171,7 +157,7 @@ class Connection:
             ]
         )
         bash_command = f"""
- {venv_python} ./odoo/{executable}
+ ./odoo/{executable}
  {extra_commands or '-i base'}
  --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
  --db_user={options['db_user']}
