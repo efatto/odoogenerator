@@ -44,10 +44,12 @@ class Connection:
         self.python = data["python"]
         self.path = os.path.expanduser('~')
         self.version = version
-        self.venv_path = os.path.join(
+        self.base_path = os.path.join(
             self.path,
             'Sviluppo',
-            'Odoo',
+            'Odoo')
+        self.venv_path = os.path.join(
+            self.base_path,
             f'odoo{self.version}',
         )
         self.pg_bin_path = '/usr/lib/postgresql/15/bin/'
@@ -58,16 +60,13 @@ class Connection:
     def _create_venv(self, branch=False, private=False):
         venv_path = self.venv_path
         odoo_repo = 'https://github.com/OCA/OCB.git'
-        base_path = os.path.join(
-            self.path,
-            'Sviluppo',
-            'Odoo')
+        venv_pip = os.path.join(self.venv_path, 'bin', 'pip')
         if not os.path.isdir(venv_path):
             subprocess.Popen(
                 [
                     f"virtualenv -p {self.python['version']} odoo{self.version}",
                 ],
-                cwd=base_path, shell=True
+                cwd=self.base_path, shell=True
             ).wait()
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
             subprocess.Popen(
@@ -101,9 +100,9 @@ class Connection:
              ),
         )
         commands = [
-            f'bin/pip install -r requirements.txt --disable-pip-version-check',
-            f'bin/pip install -r odoo/requirements.txt --disable-pip-version-check',
-            f'cd odoo && ../bin/pip install -e . --disable-pip-version-check',
+            f'{venv_pip} install -r odoo/requirements.txt --disable-pip-version-check',
+            f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
+            f'cd odoo && {venv_pip} install -e . --disable-pip-version-check',
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
@@ -133,7 +132,7 @@ class Connection:
                     venv_path, 'repos', repo_name, 'requirements.txt')
                 if os.path.isfile(requirements_path):
                     subprocess.Popen([
-                        f'bin/pip install -r {requirements_path} '
+                        f'{venv_pip} install -r {requirements_path} '
                         f'--disable-pip-version-check',
                     ], cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
