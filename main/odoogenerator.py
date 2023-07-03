@@ -61,10 +61,13 @@ class Connection:
         venv_path = self.venv_path
         odoo_repo = 'https://github.com/OCA/OCB.git'
         venv_pip = os.path.join(self.venv_path, 'bin', 'pip')
+        # pre-requisite: install in pyenv python version + virtualenv
         if not os.path.isdir(venv_path):
             subprocess.Popen(
                 [
-                    f"virtualenv -p {self.python['version']} odoo{self.version}",
+                    f"virtualenv -p "
+                    f"{self.path}/.pyenv/versions/{self.python['version']}/bin/python "
+                    f"odoo{self.version}",
                 ],
                 cwd=self.base_path, shell=True
             ).wait()
@@ -100,6 +103,7 @@ class Connection:
              ),
         )
         commands = [
+            f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
             f'{venv_pip} install -r odoo/requirements.txt --disable-pip-version-check',
             f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
             f'cd odoo && {venv_pip} install -e . --disable-pip-version-check',
