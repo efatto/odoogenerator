@@ -213,7 +213,8 @@ class Connection:
 
     def create_it_po(self, module, repo):
         """
-            crea un db vuoto ed installare il modulo richiesto per poi estrarre l'it.po
+            crea un db vuoto ed installa il modulo richiesto per poi estrarre l'it.po
+            per la versione attualmente attiva in __init__
             :param str module: nome del modulo da tradurre
             :param str repo: nome del repository in cui si trova il modulo
         """
