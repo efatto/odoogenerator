@@ -38,6 +38,7 @@ class Connection:
         data = self.load_config(version)
         self.repositories = data["repositories"]
         self.private_repositories = data["private-repositories"]
+        self.all_repositories = self.repositories | self.private_repositories
         self.options = data["options"]
         self.additional_options = data["additional_options"]
         self.queue_job = data["queue_job"]
@@ -110,9 +111,7 @@ class Connection:
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
-        repos = self.repositories
-        if private:
-            repos |= self.private_repositories
+        repos = self.all_repositories
         for repo_name in repos:
             repo_url = repos.get(repo_name)
             if ' ' in repo_url:
@@ -152,7 +151,7 @@ class Connection:
         executable = 'openerp-server' if self.version in ['7.0', '8.0', '9.0'] \
             else 'odoo-bin'
         addons_path = ','.join(
-            [f'{venv_path}/repos/{repo}' for repo in self.repositories if any(
+            [f'{venv_path}/repos/{repo}' for repo in self.all_repositories if any(
                 '__manifest__.py' in f for r, d, f in os.walk(
                     os.path.join(venv_path, 'repos', repo)
                 )
