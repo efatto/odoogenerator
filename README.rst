@@ -12,6 +12,7 @@ Per usare questa funzionalità, entrare in un console Python e usare questi coma
 
 .. code-block:: python
 
+    import sys
     sys.path.extend(['/home/developer/Sviluppo/odoogenerator'])
     from main import odoogenerator
     o = odoogenerator.Connection("16.0"|"14.0"|"12.0")
