@@ -62,7 +62,12 @@ class Connection:
         venv_path = self.venv_path
         odoo_repo = 'https://github.com/OCA/OCB.git'
         venv_pip = os.path.join(self.venv_path, 'bin', 'pip')
-        # pre-requisite: install in pyenv python version + virtualenv
+        subprocess.Popen(
+            [
+                f"pyenv install -s {self.python['version']}"
+            ],
+            cwd=self.base_path, shell=True
+        ).wait()
         if not os.path.isdir(venv_path):
             os.makedirs(self.venv_path)
         python_version_file = os.path.join(venv_path, '.python-version')
@@ -168,7 +173,8 @@ class Connection:
             ]
         )
         bash_command = f"""
- ./odoo/{executable}
+{venv_path}/bin/python
+{venv_path}/odoo/{executable}
  {extra_commands or '-i base'}
  --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
  --db_user={options['db_user']}
