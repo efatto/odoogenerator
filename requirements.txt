@@ -1,2 +1,3 @@
 odoorpc
 mysql-connector-python
+virtualenv
