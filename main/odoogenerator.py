@@ -72,7 +72,8 @@ class Connection:
             writer.close()
         subprocess.Popen(
             [
-                f"python -m venv odoo{self.version}",
+                f"{self.path}/.pyenv/versions/{self.python['version']}/bin/python "
+                f"-m venv odoo{self.version}",
             ],
             cwd=self.base_path, shell=True
         ).wait()
