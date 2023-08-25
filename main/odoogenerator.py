@@ -64,14 +64,18 @@ class Connection:
         venv_pip = os.path.join(self.venv_path, 'bin', 'pip')
         # pre-requisite: install in pyenv python version + virtualenv
         if not os.path.isdir(venv_path):
-            subprocess.Popen(
-                [
-                    f"virtualenv -p "
-                    f"{self.path}/.pyenv/versions/{self.python['version']}/bin/python "
-                    f"odoo{self.version}",
-                ],
-                cwd=self.base_path, shell=True
-            ).wait()
+            os.makedirs(self.venv_path)
+        python_version_file = os.path.join(venv_path, '.python-version')
+        if not os.path.isfile(python_version_file):
+            with open(python_version_file, "w") as writer:
+                writer.write(f"{self.python['version']}")
+            writer.close()
+        subprocess.Popen(
+            [
+                f"python -m venv odoo{self.version}",
+            ],
+            cwd=self.base_path, shell=True
+        ).wait()
         if not os.path.isdir(os.path.join(venv_path, 'odoo')):
             subprocess.Popen(
                 [
