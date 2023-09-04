@@ -1,3 +1,4 @@
 odoorpc
 mysql-connector-python
 virtualenv
+wheel
