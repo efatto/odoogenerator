@@ -106,8 +106,8 @@ class Connection:
         commands = [
             f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
             f'{venv_pip} install -r odoo/requirements.txt --disable-pip-version-check',
-            f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
             f'cd odoo && {venv_pip} install -e . --disable-pip-version-check',
+            f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
