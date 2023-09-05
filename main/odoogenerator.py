@@ -107,7 +107,6 @@ class Connection:
             f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
             f'{venv_pip} install -r odoo/requirements.txt --disable-pip-version-check',
             f'cd odoo && {venv_pip} install -e . --disable-pip-version-check',
-            f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
@@ -138,6 +137,12 @@ class Connection:
                         f'{venv_pip} install -r {requirements_path} '
                         f'--disable-pip-version-check',
                     ], cwd=venv_path, shell=True).wait()
+        # ensure python libraries are installed at required version
+        commands = [
+            f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
+        ]
+        for command in commands:
+            subprocess.Popen(command, cwd=venv_path, shell=True).wait()
         self.start_odoo(save_config=True)
 
     def start_odoo(self, save_config=False, extra_commands=False):
