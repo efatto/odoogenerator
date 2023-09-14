@@ -247,6 +247,15 @@ class Connection:
             extra_commands=extra_commands
         )
 
+    def create_it_po_for_repo(self, repo):
+        # recreate all it.po files for entire repo
+        for dirpath, dirnames, files in os.walk(
+            os.path.join(self.venv_path, 'repos', repo)
+        ):
+            for module in dirnames:
+                if module != "setup" and not module.startswith((".", "_")):
+                    self.create_it_po(module, repo)
+
     # WIP non in uso ###
     @staticmethod
     def _get_opener(verify_ssl=True, sessions=True):
