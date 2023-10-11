@@ -114,8 +114,7 @@ class Connection:
         for repo_name in repos:
             repo_url = repos.get(repo_name)
             if ' ' in repo_url:
-                repo = repo_url.split(' ')[0]
-                repo_version = repo_url.split(' ')[1]
+                repo, repo_version = repo_url.split(' ')
             else:
                 repo = repo_url
                 repo_version = self.version
