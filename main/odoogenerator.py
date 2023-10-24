@@ -186,31 +186,41 @@ class Connection:
         self.pid = process.pid
         if save_config:
             process.wait()
-            subprocess.Popen(
-                ['mv ~/.odoorc ./'], shell=True, cwd=venv_path
-            ).wait()
+            if os.path.isfile(os.path.join(self.path, '.odoorc')):
+                subprocess.Popen(
+                    ['mv ~/.odoorc ./'], shell=True, cwd=venv_path
+                ).wait()
             subprocess.Popen(
                 ['sed -i "/^osv_memory_age_limit/d" .odoorc'],
                 shell=True, cwd=venv_path
             ).wait()
             # add additional_options and queue job
+            with open(os.path.join(venv_path, ".odoorc")) as f:
+                odoorc_text = f.read()
+                f.close()
             if self.additional_options:
                 for additional_option in self.additional_options:
-                    subprocess.Popen(
-                        [f'echo "{additional_option} = '
-                         f'{self.additional_options[additional_option]}" >> .odoorc'],
-                        shell=True, cwd=venv_path
-                    ).wait()
+                    if additional_option not in odoorc_text:
+                        subprocess.Popen(
+                            [
+                                f'echo "{additional_option} = '
+                                f'{self.additional_options[additional_option]}"'
+                                f' >> .odoorc'],
+                            shell=True, cwd=venv_path
+                        ).wait()
             if self.queue_job:
-                subprocess.Popen(
-                    ['echo "[queue_job]" >> .odoorc'],
-                    shell=True, cwd=venv_path
-                ).wait()
-                for job in self.queue_job:
+                if "[queue_job]" not in odoorc_text:
                     subprocess.Popen(
-                        [f'echo "{job} = {self.queue_job[job]}" >> .odoorc'],
+                        ['echo "[queue_job]" >> .odoorc'],
                         shell=True, cwd=venv_path
                     ).wait()
+                for job in self.queue_job:
+                    job_text = f"{job} = {self.queue_job[job]}"
+                    if job_text not in odoorc_text:
+                        subprocess.Popen(
+                            [f'echo "{job_text}" >> .odoorc'],
+                            shell=True, cwd=venv_path
+                        ).wait()
         if extra_commands and 'stop' in extra_commands:
             process.wait()
 
