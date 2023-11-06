@@ -47,7 +47,7 @@ class OdooGenerator:
             self.base_path,
             f"odoo{self.version}",
         )
-        self.pg_bin_path = "/usr/lib/postgresql/15/bin/"
+        self.pg_bin_path = "/usr/lib/postgresql/14/bin/"
         # todo get from system function
         self.pid = False
         self.client = False
