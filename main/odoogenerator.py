@@ -118,8 +118,8 @@ class OdooGenerator:
         repos = self.all_repositories
         for repo_name in repos:
             repo_url = repos.get(repo_name)
-            if ' ' in repo_url:
-                repo, repo_version = repo_url.split(' ')
+            if " " in repo_url:
+                repo, repo_version = repo_url.split(" ")
             else:
                 repo = repo_url
                 repo_version = self.version
@@ -142,13 +142,17 @@ class OdooGenerator:
                     venv_path, "repos", repo_name, "requirements.txt"
                 )
                 if os.path.isfile(requirements_path):
-                    subprocess.Popen([
-                        f'{venv_pip} install -r {requirements_path} '
-                        f'--disable-pip-version-check',
-                    ], cwd=venv_path, shell=True).wait()
+                    subprocess.Popen(
+                        [
+                            f"{venv_pip} install -r {requirements_path} "
+                            f"--disable-pip-version-check",
+                        ],
+                        cwd=venv_path,
+                        shell=True,
+                    ).wait()
         # ensure python libraries are installed at required version
         commands = [
-            f'{venv_pip} install -r requirements.txt --disable-pip-version-check',
+            f"{venv_pip} install -r requirements.txt --disable-pip-version-check",
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
@@ -200,13 +204,10 @@ class OdooGenerator:
         self.pid = process.pid
         if save_config:
             process.wait()
-            if os.path.isfile(os.path.join(self.path, '.odoorc')):
-                subprocess.Popen(
-                    ['mv ~/.odoorc ./'], shell=True, cwd=venv_path
-                ).wait()
+            if os.path.isfile(os.path.join(self.path, ".odoorc")):
+                subprocess.Popen(["mv ~/.odoorc ./"], shell=True, cwd=venv_path).wait()
             subprocess.Popen(
-                ['sed -i "/^osv_memory_age_limit/d" .odoorc'],
-                shell=True, cwd=venv_path
+                ['sed -i "/^osv_memory_age_limit/d" .odoorc'], shell=True, cwd=venv_path
             ).wait()
             # add additional_options and queue job
             with open(os.path.join(venv_path, ".odoorc")) as f:
@@ -219,23 +220,23 @@ class OdooGenerator:
                             [
                                 f'echo "{additional_option} = '
                                 f'{self.additional_options[additional_option]}"'
-                                f' >> .odoorc'],
-                            shell=True, cwd=venv_path
+                                f" >> .odoorc"
+                            ],
+                            shell=True,
+                            cwd=venv_path,
                         ).wait()
             if self.queue_job:
                 if "[queue_job]" not in odoorc_text:
                     subprocess.Popen(
-                        ['echo "[queue_job]" >> .odoorc'],
-                        shell=True, cwd=venv_path
+                        ['echo "[queue_job]" >> .odoorc'], shell=True, cwd=venv_path
                     ).wait()
                 for job in self.queue_job:
                     job_text = f"{job} = {self.queue_job[job]}"
                     if job_text not in odoorc_text:
                         subprocess.Popen(
-                            [f'echo "{job_text}" >> .odoorc'],
-                            shell=True, cwd=venv_path
+                            [f'echo "{job_text}" >> .odoorc'], shell=True, cwd=venv_path
                         ).wait()
-        if extra_commands and 'stop' in extra_commands:
+        if extra_commands and "stop" in extra_commands:
             process.wait()
 
     def create_it_po(self, module, repo):
@@ -266,7 +267,7 @@ class OdooGenerator:
     def create_it_po_for_repo(self, repo):
         # recreate all it.po files for entire repo
         for dirpath, dirnames, files in os.walk(
-            os.path.join(self.venv_path, 'repos', repo)
+            os.path.join(self.venv_path, "repos", repo)
         ):
             for module in dirnames:
                 if module != "setup" and not module.startswith((".", "_")):
