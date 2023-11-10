@@ -115,7 +115,9 @@ class OdooGenerator:
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
-        repos = self.all_repositories
+        repos = self.repositories
+        if private:
+            repos = self.all_repositories
         for repo_name in repos:
             repo_url = repos.get(repo_name)
             if " " in repo_url:
@@ -332,8 +334,14 @@ if __name__ == "__main__":
             choices=["12.0", "14.0", "16.0"],
             default="14.0",
         )
+        parser.add_argument(
+            "-P",
+            "--private",
+            help="Odoo private repositories",
+            choices=['yes'],
+        )
         args = parser.parse_args()
-        o = OdooGenerator(args.version)
-        o.create_venv()
+        o = OdooGenerator(version=args.version)
+        o.create_venv(private=args.private)
     except Exception as e:
         print("Error: " + str(e))
