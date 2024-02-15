@@ -162,7 +162,8 @@ class OdooGenerator:
                     cwd=venv_path,
                     shell=True,
                 ).wait()
-            self.git_aggregate(branch, repo_name, config_list=["repos.yml"])
+            self.git_aggregate(
+                repo_version, repo_name, config_list=["repos.yml"])
             subprocess.Popen(
                 [f"git pull origin {repo_version}"],
                 cwd=f"{venv_path}/repos/{repo_name}",
