@@ -114,24 +114,26 @@ class OdooGenerator:
                 shell=True,
             ).wait()
         elif branch:
-            subprocess.Popen(
-                [
-                    f"git reset --hard origin/{self.version}",
-                    f"git pull origin {branch} --depth 1",
-                ],
-                cwd=f"{venv_path}/odoo",
-                shell=True,
-            ).wait()
+            for command in [
+                f"git reset --hard origin/{branch}",
+                f"git pull origin {branch} --depth 1",
+            ]:
+                subprocess.Popen(
+                    command,
+                    cwd=f"{venv_path}/odoo",
+                    shell=True,
+                ).wait()
         else:
-            subprocess.Popen(
-                [
-                    f"git reset --hard origin/{self.version}",
-                    f"git pull origin {self.version} --depth 1",
-                    f"git reset --hard origin/{self.version}",
-                ],
-                cwd=f"{venv_path}/odoo",
-                shell=True,
-            ).wait()
+            for command in [
+                f"git reset --hard origin/{self.version}",
+                f"git pull origin {self.version} --depth 1",
+                f"git reset --hard origin/{self.version}",
+            ]:
+                subprocess.Popen(
+                    command,
+                    cwd=f"{venv_path}/odoo",
+                    shell=True,
+                ).wait()
         copy(
             os.path.join(self.config_path, f"requirements_{self.version}.txt"),
             os.path.join(venv_path, "requirements.txt"),
@@ -164,11 +166,15 @@ class OdooGenerator:
                 ).wait()
             self.git_aggregate(
                 repo_version, repo_name, config_list=["repos.yml"])
-            subprocess.Popen(
-                [f"git pull origin {repo_version}"],
-                cwd=f"{venv_path}/repos/{repo_name}",
-                shell=True,
-            ).wait()
+            for command in [
+                f"git fetch origin {repo_version}",
+                f"git reset --hard origin/{repo_version}",
+            ]:
+                subprocess.Popen(
+                    command,
+                    cwd=f"{venv_path}/repos/{repo_name}",
+                    shell=True,
+                ).wait()
             if not any(x in repo_name for x in ["ait", "reinova", "liocreo"]):
                 requirements_path = os.path.join(
                     venv_path, "repos", repo_name, "requirements.txt"
