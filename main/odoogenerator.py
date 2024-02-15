@@ -12,6 +12,9 @@ import ssl
 import subprocess
 import sys
 import time
+import tempfile
+import yaml
+from oca_projects import get_repositories_and_branches
 
 
 class OdooGenerator:
@@ -51,6 +54,31 @@ class OdooGenerator:
         # todo get from system function
         self.pid = False
         self.client = False
+
+    @staticmethod
+    def git_aggregate(branch, singlerepo, config_list):
+        gitaggregate_target = "sergiocorato"
+        for repo, branch, repo_url, gitagg, parts, part in get_repositories_and_branches(
+            branch, singlerepo, config_list
+        ):
+            tmp_filename = tempfile.mktemp(suffix=".yml")
+            try:
+                with open(tmp_filename, "w+") as writer:
+                    file_dict = [{x: parts[x]} for x in parts if x == part][0]
+                    yaml.dump(file_dict, writer)
+                    bash_command = [
+                        f'sed -i "s/target: pretecno/target: {gitaggregate_target}/" '
+                        f'{tmp_filename}',
+                        f"gitaggregate -p -c {tmp_filename}",
+                        f"sed -i 's/target: {gitaggregate_target}/target: pretecno/' "
+                        f"{tmp_filename}",
+                    ]
+                    for command in bash_command:
+                        subprocess.Popen(
+                            command, stdout=subprocess.PIPE, shell=True
+                        ).wait()
+            finally:
+                os.unlink(tmp_filename)
 
     def create_venv(self, branch=False, private=False):
         venv_path = self.venv_path
@@ -134,6 +162,7 @@ class OdooGenerator:
                     cwd=venv_path,
                     shell=True,
                 ).wait()
+            self.git_aggregate(branch, repo_name, config_list=["repos.yml"])
             subprocess.Popen(
                 [f"git pull origin {repo_version}"],
                 cwd=f"{venv_path}/repos/{repo_name}",
