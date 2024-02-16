@@ -113,27 +113,16 @@ class OdooGenerator:
                 cwd=venv_path,
                 shell=True,
             ).wait()
-        elif branch:
-            for command in [
-                f"git reset --hard origin/{branch}",
-                f"git pull origin {branch} --depth 1",
-            ]:
-                subprocess.Popen(
-                    command,
-                    cwd=f"{venv_path}/odoo",
-                    shell=True,
-                ).wait()
-        else:
-            for command in [
-                f"git reset --hard origin/{self.version}",
-                f"git pull origin {self.version} --depth 1",
-                f"git reset --hard origin/{self.version}",
-            ]:
-                subprocess.Popen(
-                    command,
-                    cwd=f"{venv_path}/odoo",
-                    shell=True,
-                ).wait()
+        for command in [
+            f"git fetch origin",
+            f"git reset --hard origin/{branch or self.version}",
+            f"git checkout origin/{branch or self.version}",
+        ]:
+            subprocess.Popen(
+                command,
+                cwd=f"{venv_path}/odoo",
+                shell=True,
+            ).wait()
         copy(
             os.path.join(self.config_path, f"requirements_{self.version}.txt"),
             os.path.join(venv_path, "requirements.txt"),
@@ -167,8 +156,9 @@ class OdooGenerator:
             self.git_aggregate(
                 repo_version, repo_name, config_list=["repos.yml"])
             for command in [
-                f"git fetch origin {repo_version}",
+                f"git fetch origin",
                 f"git reset --hard origin/{repo_version}",
+                f"git checkout origin/{repo_version}",
             ]:
                 subprocess.Popen(
                     command,
