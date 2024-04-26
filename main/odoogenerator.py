@@ -38,7 +38,7 @@ class OdooGenerator:
         data = self.load_config(version)
         self.repositories = data["repositories"]
         self.private_repositories = data["private-repositories"]
-        self.all_repositories = self.repositories | self.private_repositories
+        self.all_repositories = dict(**self.repositories, **self.private_repositories)
         self.options = data["options"]
         self.additional_options = data["additional_options"]
         self.queue_job = data["queue_job"]
