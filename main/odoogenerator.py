@@ -294,12 +294,12 @@ class OdooGenerator:
 
     def create_it_po_for_repo(self, repo):
         # recreate all it.po files for entire repo
-        for dirpath, dirnames, files in os.walk(
+        for dirname in os.listdir(
             os.path.join(self.venv_path, "repos", repo)
         ):
-            for module in dirnames:
-                if module != "setup" and not module.startswith((".", "_")):
-                    self.create_it_po(module, repo)
+            if os.path.isdir(os.path.join(self.venv_path, "repos", repo, dirname)):
+                if not dirname.startswith((".", "_", "setup")):
+                    self.create_it_po(dirname, repo)
 
     # WIP non in uso ###
     @staticmethod
