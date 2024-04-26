@@ -116,7 +116,7 @@ class OdooGenerator:
         for command in [
             f"git fetch origin",
             f"git reset --hard origin/{branch or self.version}",
-            f"git checkout origin/{branch or self.version}",
+            f"git checkout {branch or self.version}",
         ]:
             subprocess.Popen(
                 command,
@@ -158,7 +158,7 @@ class OdooGenerator:
             for command in [
                 f"git fetch origin",
                 f"git reset --hard origin/{repo_version}",
-                f"git checkout origin/{repo_version}",
+                f"git checkout {repo_version}",
             ]:
                 subprocess.Popen(
                     command,
