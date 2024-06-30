@@ -57,7 +57,7 @@ class OdooGenerator:
 
     @staticmethod
     def git_aggregate(branch, singlerepo, config_list):
-        gitaggregate_target = "sergiocorato"
+        gitaggregate_target = "efatto"
         for repo, branch, repo_url, gitagg, parts, part in get_repositories_and_branches(
             branch, singlerepo, config_list
         ):
