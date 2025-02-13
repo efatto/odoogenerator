@@ -17,7 +17,7 @@ Per usare questa funzionalità, eseguire:
     python -m venv venv
     source venv/bin/activate
     pip install -r requirements.txt
-    ./main/odoogenerator.py --version 14.0
+    ./main/odoogenerator.py --version[-V] 14.0 [--private|-P yes]
 
 Questo creerà nella cartella `Sviluppo` dell'utente corrente una cartella `Odoo` con una sotto-cartella `odoo<versione>` in cui verrà installato Odoo alla versione presente nella configurazione e creato un file di configurazione `.odoorc`
 
