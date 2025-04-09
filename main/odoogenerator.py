@@ -357,7 +357,7 @@ if __name__ == "__main__":
             "-V",
             "--version",
             help="Odoo version",
-            choices=["12.0", "14.0", "16.0"],
+            choices=["12.0", "14.0", "16.0", "18.0"],
             default="14.0",
         )
         parser.add_argument(
