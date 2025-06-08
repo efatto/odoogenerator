@@ -113,6 +113,14 @@ class OdooGenerator:
                 cwd=venv_path,
                 shell=True,
             ).wait()
+        else:
+            subprocess.Popen(
+                [
+                    "git pull --rebase",
+                ],
+                cwd=venv_path,
+                shell=True,
+            ).wait()
         for command in [
             f"git fetch origin",
             f"git reset --hard origin/{branch or self.version}",
