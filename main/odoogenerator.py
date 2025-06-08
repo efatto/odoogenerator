@@ -114,20 +114,11 @@ class OdooGenerator:
                 shell=True,
             ).wait()
         else:
+            # I presume odoo branch is always the same
             subprocess.Popen(
                 [
                     "git pull --rebase",
                 ],
-                cwd=venv_path,
-                shell=True,
-            ).wait()
-        for command in [
-            f"git fetch origin",
-            f"git reset --hard origin/{branch or self.version}",
-            f"git checkout {branch or self.version}",
-        ]:
-            subprocess.Popen(
-                command,
                 cwd=f"{venv_path}/odoo",
                 shell=True,
             ).wait()
@@ -163,16 +154,18 @@ class OdooGenerator:
                 ).wait()
             self.git_aggregate(
                 repo_version, repo_name, config_list=["repos.yml"])
-            for command in [
-                f"git fetch origin",
-                f"git reset --hard origin/{repo_version}",
-                f"git checkout {repo_version}",
-            ]:
-                subprocess.Popen(
-                    command,
-                    cwd=f"{venv_path}/repos/{repo_name}",
-                    shell=True,
-                ).wait()
+            if os.path.isdir("%s/repos/%s" % (venv_path, repo_name)):
+                for command in [
+                    "git fetch origin",
+                    f"git reset --hard origin/{repo_version}",
+                    f"git checkout {repo_version}",
+                    "git pull --rebase",
+                ]:
+                    subprocess.Popen(
+                        command,
+                        cwd=f"{venv_path}/repos/{repo_name}",
+                        shell=True,
+                    ).wait()
             if not any(x in repo_name for x in ["ait", "reinova", "liocreo"]):
                 requirements_path = os.path.join(
                     venv_path, "repos", repo_name, "requirements.txt"
