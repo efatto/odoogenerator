@@ -122,7 +122,7 @@ class OdooGenerator:
             finally:
                 os.unlink(tmp_filename)
 
-    def create_venv(self, branch=False, private=False):
+    def create_venv(self, branch=False, private=False, gitaggregate=False):
         venv_path = self.venv_path
         odoo_repo = "https://github.com/OCA/OCB.git"
         venv_pip = os.path.join(self.venv_path, "bin", "pip")
@@ -194,8 +194,9 @@ class OdooGenerator:
                     cwd=venv_path,
                     shell=True,
                 ).wait()
-            self.git_aggregate(
-                repo_version, repo_name, config_list=["repos.yml"])
+            if gitaggregate:
+                self.git_aggregate(
+                    repo_version, repo_name, config_list=["repos.yml"])
             if os.path.isdir("%s/repos/%s" % (venv_path, repo_name)):
                 for command in [
                     "git fetch origin",
@@ -421,6 +422,13 @@ if __name__ == "__main__":
             help="Save only",
             choices=['yes'],
         )
+        parser.add_argument(
+            "-G",
+            "--gitaggregate",
+            help="Gitaggregate",
+            choices=['yes'],
+            default='no',
+        )
         args = parser.parse_args()
         o = OdooGenerator(version=args.version)
         if args.translate_only:
@@ -428,6 +436,6 @@ if __name__ == "__main__":
         elif args.save_only:
             o.start_odoo(save_config=True)
         else:
-            o.create_venv(private=args.private)
+            o.create_venv(private=args.private, gitaggregate=args.gitaggregate)
     except Exception as e:
         print("Error: " + str(e))
