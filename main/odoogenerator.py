@@ -14,7 +14,6 @@ import sys
 import time
 import tempfile
 import yaml
-from oca_projects import get_repositories_and_branches
 
 
 class OdooGenerator:
@@ -30,6 +29,50 @@ class OdooGenerator:
         data = json.load(f)
         f.close()
         return data
+
+    @staticmethod
+    def get_repositories_and_branches(branch=False, singlerepo=False, config_list=None):
+        if not config_list:
+            config_list = ["repos.yml", "repos_custom.yml"]  # , "repos_ocb.yml"]
+        for config in config_list:
+            print(branch)
+            print(singlerepo)
+            gitaggregate = False
+            if config == "repos.yml":
+                gitaggregate = True
+            config_path = os.path.join(
+                os.path.expanduser('~'),
+                'Sviluppo',
+                'make_python_wheels',
+                'repos_gitaggregate',
+                branch,
+                config)
+            with open(config_path, "r") as stream:
+                try:
+                    parts = yaml.safe_load(stream) or {}
+                except yaml.YAMLError as exc:
+                    print(exc)
+            if singlerepo:
+                part = [x for x in parts if
+                        singlerepo == x.split("/")[-1].split("_")[0]]
+                if part:
+                    part = part[0]
+                    repo, branch = part.split("/")[-1].split("_")
+                    protocol = parts[part].get("remotes").get("efatto")
+                    if protocol:
+                        protocol = protocol.replace(
+                            "git+ssh://", ""
+                        )
+                        yield repo, branch, protocol, gitaggregate, parts, part
+            else:
+                for part in parts:
+                    repo, branch = part.split("/")[-1].split("_")
+                    protocol = parts[part].get("remotes").get("efatto")
+                    if protocol:
+                        protocol = protocol.replace(
+                            "git+ssh://", ""
+                        )
+                        yield repo, branch, protocol, gitaggregate, parts, part
 
     def __init__(self, version):
         self.config_path = os.path.join(
@@ -55,10 +98,9 @@ class OdooGenerator:
         self.pid = False
         self.client = False
 
-    @staticmethod
-    def git_aggregate(branch, singlerepo, config_list):
+    def git_aggregate(self, branch, singlerepo, config_list):
         gitaggregate_target = "efatto"
-        for repo, branch, repo_url, gitagg, parts, part in get_repositories_and_branches(
+        for repo, branch, repo_url, gitagg, parts, part in self.get_repositories_and_branches(
             branch, singlerepo, config_list
         ):
             tmp_filename = tempfile.mktemp(suffix=".yml")
