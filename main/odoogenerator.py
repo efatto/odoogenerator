@@ -282,12 +282,12 @@ class OdooGenerator:
         for command in commands:
             subprocess.Popen(command, shell=True, cwd=self.venv_path).wait()
         extra_commands = (
-            f"-c .odoorc -i {module} --load-language=it_IT " f"-d demo10 " f"--stop"
+            f"-c .odoorc -i {module} --load-language=it_IT -d demo10 --stop"
         )
         self.start_odoo(extra_commands=extra_commands)
         extra_commands = (
-            f"-c .odoorc -l it_IT --modules={module} "
-            f"-d demo10 "
+            f"-c {self.venv_path}/.odoorc -l it_IT --db_port={self.options['db_port']} "
+            f"--modules={module} -d demo10 "
             f"--i18n-export={self.venv_path}/repos/{repo}/{module}/i18n/it.po "
             f"--stop"
         )
@@ -367,8 +367,25 @@ if __name__ == "__main__":
             help="Odoo private repositories",
             choices=['yes'],
         )
+        parser.add_argument(
+            "-T",
+            "--translate-only",
+            help="Translate only",
+            choices=['yes'],
+        )
+        parser.add_argument(
+            "-S",
+            "--save-only",
+            help="Save only",
+            choices=['yes'],
+        )
         args = parser.parse_args()
         o = OdooGenerator(version=args.version)
-        o.create_venv(private=args.private)
+        if args.translate_only:
+            o.create_it_po_for_repo("base")
+        elif args.save_only:
+            o.start_odoo(save_config=True)
+        else:
+            o.create_venv(private=args.private)
     except Exception as e:
         print("Error: " + str(e))
