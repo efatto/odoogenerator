@@ -32,3 +32,17 @@ La configurazione è nella cartella dell'utente `./Sviluppo/srvmngt/odoogenerato
 
 #. un file txt con i requirements aggiuntivi specifici (i requirements di Odoo sono già installati di default, oltre a quelli di l10n-italy, da verificare se installare anche quelli delle altre repositories)
 #. un file json con le specifiche per l'installazione.
+
+Ci sono delle opzioni alternative di avvio:
+
+Con il tag aggiuntivo `-S yes` viene solo generato il file `.odoorc` nella cartella della versione selezionata:
+
+.. code-block:: bash
+
+    -S yes
+
+Con il tag aggiuntivo `-T <repository>` vengono aggiornati i file di traduzione all'interno dei moduli nella cartella del repository della versione selezionata:
+
+.. code-block:: bash
+
+    -T <repository>
