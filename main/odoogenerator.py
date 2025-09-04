@@ -122,7 +122,7 @@ class OdooGenerator:
             finally:
                 os.unlink(tmp_filename)
 
-    def create_venv(self, branch=False, private=False, gitaggregate=False):
+    def create_venv(self, branch=False, private=False, gitaggregate="no"):
         venv_path = self.venv_path
         odoo_repo = "https://github.com/OCA/OCB.git"
         venv_pip = os.path.join(self.venv_path, "bin", "pip")
@@ -194,7 +194,7 @@ class OdooGenerator:
                     cwd=venv_path,
                     shell=True,
                 ).wait()
-            if gitaggregate:
+            if gitaggregate == "yes":
                 self.git_aggregate(
                     repo_version, repo_name, config_list=["repos.yml"])
             if os.path.isdir("%s/repos/%s" % (venv_path, repo_name)):
