@@ -337,7 +337,7 @@ class OdooGenerator:
         self.start_odoo(extra_commands=extra_commands)
 
     def create_it_po_for_repo(self, repo):
-        # recreate all it.po files for entire repo
+        # recreate all it.po files for the selected repo
         for dirname in os.listdir(
             os.path.join(self.venv_path, "repos", repo)
         ):
@@ -412,9 +412,8 @@ if __name__ == "__main__":
         )
         parser.add_argument(
             "-T",
-            "--translate-only",
-            help="Translate only",
-            choices=['yes'],
+            "--translate-repo",
+            help="Translate repository",
         )
         parser.add_argument(
             "-S",
@@ -431,8 +430,8 @@ if __name__ == "__main__":
         )
         args = parser.parse_args()
         o = OdooGenerator(version=args.version)
-        if args.translate_only:
-            o.create_it_po_for_repo("base")
+        if args.translate_repo:
+            o.create_it_po_for_repo(args.translate_repo)
         elif args.save_only:
             o.start_odoo(save_config=True)
         else:
