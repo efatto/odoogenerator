@@ -39,10 +39,16 @@ Con il tag aggiuntivo `-S yes` viene solo generato il file `.odoorc` nella carte
 
 .. code-block:: bash
 
-    -S yes
+    -S
 
 Con il tag aggiuntivo `-T <repository>` vengono aggiornati i file di traduzione all'interno dei moduli nella cartella del repository della versione selezionata:
 
 .. code-block:: bash
 
     -T <repository>
+
+Con il tag aggiuntivo `-G ['yes' | 'no]` viene eseguito il gitaggregate dei repository durante la generazione, in modo da avere il codice aggiornato con le PR impostate nel file :
+
+.. code-block:: bash
+
+    -G yes

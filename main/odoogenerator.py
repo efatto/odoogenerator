@@ -265,6 +265,7 @@ class OdooGenerator:
  --limit-time-cpu={options['limit_time_cpu']}
  --limit-time-real={options['limit_time_real']}
  --load={options['server_wide_modules']}
+ -c {venv_path}/.odoorc
         """
         if self.version != "7.0":
             bash_command += f"--data-dir={venv_path}/data_dir "
