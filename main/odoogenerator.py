@@ -124,28 +124,25 @@ class OdooGenerator:
 
     def create_venv(self, branch=False, private=False, gitaggregate="no"):
         venv_path = self.venv_path
-        odoo_repo = "https://github.com/OCA/OCB.git"
-        venv_pip = os.path.join(self.venv_path, "bin", "pip")
-        subprocess.Popen(
-            [f"pyenv install -s {self.python['version']}"],
-            cwd=self.base_path,
-            shell=True,
-        ).wait()
         if not os.path.isdir(venv_path):
-            os.makedirs(self.venv_path)
+            os.makedirs(venv_path)
+        odoo_repo = "https://github.com/OCA/OCB.git"
+        if not os.path.isfile(os.path.join(venv_path, "pyproject.toml")):
+            for command in [
+                f"uv init --directory {venv_path} --python "
+                f"'python=={self.python['version']}'",
+                f"uv venv --python {self.python['version']}",
+            ]:
+                subprocess.Popen(
+                    command,
+                    shell=True,
+                    cwd=venv_path,  # self.base_path?
+                ).wait()
         python_version_file = os.path.join(venv_path, ".python-version")
         if not os.path.isfile(python_version_file):
             with open(python_version_file, "w") as writer:
                 writer.write(f"{self.python['version']}")
             writer.close()
-        subprocess.Popen(
-            [
-                f"{self.path}/.pyenv/versions/{self.python['version']}/bin/python "
-                f"-m venv odoo{self.version}",
-            ],
-            cwd=self.base_path,
-            shell=True,
-        ).wait()
         if not os.path.isdir(os.path.join(venv_path, "odoo")):
             subprocess.Popen(
                 [
@@ -164,14 +161,33 @@ class OdooGenerator:
                 cwd=f"{venv_path}/odoo",
                 shell=True,
             ).wait()
+        uv_override_deps = []
+        if self.version in ["14.0", "15.0", "16.0"]:
+            uv_override_deps.append("XlsxWriter==3.2.9")
+        if self.version in ["16.0", "17.0", "18.0"]:
+            uv_override_deps.extend(
+                [
+                    "Werkzeug==2.0.2",
+                    "lxml==4.9.3",
+                    "gevent==22.10.2",
+                    "greenlet==2.0.2",
+                    "docutils==0.18.1",
+                ]
+            )
+        if uv_override_deps:
+            if "tool.uv" not in open(os.path.join(venv_path, "pyproject.toml")).read():
+                with open(os.path.join(venv_path, "pyproject.toml"), "a") as f:
+                    f.write("[tool.uv]\n")
+                    f.write(f"override-dependencies = {str(uv_override_deps)} ")
+                    f.close()
         copy(
             os.path.join(self.config_path, f"requirements_{self.version}.txt"),
             os.path.join(venv_path, "requirements.txt"),
         )
         commands = [
-            f"{venv_pip} install -r requirements.txt --disable-pip-version-check",
-            f"{venv_pip} install -r odoo/requirements.txt --disable-pip-version-check",
-            f"cd odoo && {venv_pip} install -e . --disable-pip-version-check",
+            f"uv pip install -r requirements.txt",
+            f"uv pip install -r odoo/requirements.txt",
+            f"cd odoo && uv pip install -e . ",
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
@@ -216,15 +232,14 @@ class OdooGenerator:
                 if os.path.isfile(requirements_path):
                     subprocess.Popen(
                         [
-                            f"{venv_pip} install -r {requirements_path} "
-                            f"--disable-pip-version-check",
+                            f"uv pip install -r {requirements_path}",
                         ],
                         cwd=venv_path,
                         shell=True,
                     ).wait()
         # ensure python libraries are installed at required version
         commands = [
-            f"{venv_pip} install -r requirements.txt --disable-pip-version-check",
+            f"uv pip install -r requirements.txt",
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
