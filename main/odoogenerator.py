@@ -84,7 +84,6 @@ class OdooGenerator:
         self.all_repositories = dict(**self.repositories, **self.private_repositories)
         self.options = data["options"]
         self.additional_options = data["additional_options"]
-        self.queue_job = data["queue_job"]
         self.python = data["python"]
         self.path = os.path.expanduser("~")
         self.version = version
@@ -293,11 +292,13 @@ class OdooGenerator:
         if save_config:
             process.wait()
             if os.path.isfile(os.path.join(self.path, ".odoorc")):
+                # move .odoorc from user home to Odoo path
                 subprocess.Popen(["mv ~/.odoorc ./"], shell=True, cwd=venv_path).wait()
+            # remove line with osv_memory_age_limit
             subprocess.Popen(
                 ['sed -i "/^osv_memory_age_limit/d" .odoorc'], shell=True, cwd=venv_path
             ).wait()
-            # add additional_options and queue job
+            # read .odoorc and add additional options
             with open(os.path.join(venv_path, ".odoorc")) as f:
                 odoorc_text = f.read()
                 f.close()
@@ -312,17 +313,6 @@ class OdooGenerator:
                             ],
                             shell=True,
                             cwd=venv_path,
-                        ).wait()
-            if self.queue_job:
-                if "[queue_job]" not in odoorc_text:
-                    subprocess.Popen(
-                        ['echo "[queue_job]" >> .odoorc'], shell=True, cwd=venv_path
-                    ).wait()
-                for job in self.queue_job:
-                    job_text = f"{job} = {self.queue_job[job]}"
-                    if job_text not in odoorc_text:
-                        subprocess.Popen(
-                            [f'echo "{job_text}" >> .odoorc'], shell=True, cwd=venv_path
                         ).wait()
         if extra_commands and "stop" in extra_commands:
             process.wait()
