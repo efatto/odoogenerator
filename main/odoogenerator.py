@@ -121,12 +121,15 @@ class OdooGenerator:
             finally:
                 os.unlink(tmp_filename)
 
-    def create_venv(self, branch=False, private=False, gitaggregate="no"):
+    def create_venv(self, branch=False, private=False, gitaggregate="no", recreate=False):
+        # todo add option to recreate venv (eg. to change python version) by removing
+        #  .python-version and pyproject.toml (and removing folder venv_path/bin?)
         venv_path = self.venv_path
+        bin_path = os.path.join(venv_path, ".venv/bin/")
         if not os.path.isdir(venv_path):
             os.makedirs(venv_path)
         odoo_repo = "https://github.com/OCA/OCB.git"
-        if not os.path.isfile(os.path.join(venv_path, "pyproject.toml")):
+        if not os.path.isfile(os.path.join(venv_path, "pyproject.toml")) or recreate:
             for command in [
                 f"uv init --directory {venv_path} --python "
                 f"'python=={self.python['version']}'",
@@ -138,7 +141,7 @@ class OdooGenerator:
                     cwd=venv_path,  # self.base_path?
                 ).wait()
         python_version_file = os.path.join(venv_path, ".python-version")
-        if not os.path.isfile(python_version_file):
+        if not os.path.isfile(python_version_file) or recreate:
             with open(python_version_file, "w") as writer:
                 writer.write(f"{self.python['version']}")
             writer.close()
@@ -163,7 +166,7 @@ class OdooGenerator:
         uv_override_deps = []
         if self.version in ["14.0", "15.0", "16.0"]:
             uv_override_deps.append("XlsxWriter==3.2.9")
-        if self.version in ["16.0", "17.0", "18.0"]:
+        if self.version in ["16.0", "17.0"]:
             uv_override_deps.extend(
                 [
                     "Werkzeug==2.0.2",
@@ -184,12 +187,12 @@ class OdooGenerator:
             os.path.join(venv_path, "requirements.txt"),
         )
         commands = [
-            f"uv pip install -r requirements.txt",
-            f"uv pip install -r odoo/requirements.txt",
-            f"cd odoo && uv pip install -e . ",
+            f"uv pip install -r {self.venv_path}/requirements.txt",
+            f"uv pip install -r {self.venv_path}/odoo/requirements.txt",
+            f"source activate && uv pip install -e {self.venv_path}/odoo",
         ]
         for command in commands:
-            subprocess.Popen(command, cwd=venv_path, shell=True).wait()
+            subprocess.Popen(command, cwd=bin_path, shell=True).wait()
         repos = self.repositories
         if private:
             repos = self.all_repositories
@@ -266,7 +269,7 @@ class OdooGenerator:
             ]
         )
         bash_command = f"""
-{venv_path}/bin/python
+{venv_path}/.venv/bin/python
 {venv_path}/odoo/{executable}
  {extra_commands or '-i base'}
  --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
