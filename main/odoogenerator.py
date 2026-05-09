@@ -28,6 +28,30 @@ class OdooGenerator:
         f = open(file_path)
         data = json.load(f)
         f.close()
+
+        # Update URLs for repositories present in repos.yml
+        config_path = os.path.join(
+            os.path.expanduser('~'),
+            'Sviluppo',
+            'make_python_wheels',
+            'repos_gitaggregate',
+            version,
+            "repos.yml")
+        if os.path.exists(config_path):
+            with open(config_path, "r") as stream:
+                try:
+                    parts = yaml.safe_load(stream) or {}
+                except yaml.YAMLError as exc:
+                    print(exc)
+                    parts = {}
+            repos_in_yml = [x.split("/")[-1].split("_")[0] for x in parts]
+            for repo_name in data.get("repositories", {}):
+                if repo_name in repos_in_yml:
+                    url = data["repositories"][repo_name]
+                    if url.startswith("https://github.com/OCA/"):
+                        data["repositories"][repo_name] = url.replace(
+                            "https://github.com/OCA/", "git@github.com:efatto/"
+                        )
         return data
 
     @staticmethod
@@ -216,6 +240,31 @@ class OdooGenerator:
                 self.git_aggregate(
                     repo_version, repo_name, config_list=["repos.yml"])
             if os.path.isdir("%s/repos/%s" % (venv_path, repo_name)):
+                # Check if current remote is different from config repo
+                check_remote_cmd = "git remote get-url origin"
+                process = subprocess.Popen(
+                    check_remote_cmd,
+                    cwd=f"{venv_path}/repos/{repo_name}",
+                    shell=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                stdout, _ = process.communicate()
+                current_remote = stdout.decode().strip()
+                if current_remote and current_remote != repo:
+                    # Set current remote as upstream and new repo as origin
+                    for command in [
+                        "git remote rename origin upstream",
+                        f"git remote add origin {repo}",
+                        "git fetch origin",
+                        f"git branch --set-upstream-to=origin/{repo_version} {repo_version}",
+                    ]:
+                        subprocess.Popen(
+                            command,
+                            cwd=f"{venv_path}/repos/{repo_name}",
+                            shell=True,
+                        ).wait()
+
                 for command in [
                     "git fetch origin",
                     f"git reset --hard origin/{repo_version}",
@@ -410,7 +459,7 @@ if __name__ == "__main__":
             "-V",
             "--version",
             help="Odoo version",
-            choices=["12.0", "14.0", "16.0", "18.0"],
+            choices=["12.0", "14.0", "16.0", "17.0", "18.0", "19.0"],
             default="14.0",
         )
         parser.add_argument(
