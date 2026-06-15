@@ -211,9 +211,9 @@ class OdooGenerator:
             os.path.join(venv_path, "requirements.txt"),
         )
         commands = [
-            f"uv pip install -r {self.venv_path}/requirements.txt",
-            f"uv pip install -r {self.venv_path}/odoo/requirements.txt",
-            f"source activate && uv pip install -e {self.venv_path}/odoo",
+            f"uv add --active --frozen -r {self.venv_path}/requirements.txt",
+            f"uv add --active --frozen -r {self.venv_path}/odoo/requirements.txt",
+            f"uv pip install -e {self.venv_path}/odoo",
         ]
         for command in commands:
             subprocess.Popen(command, cwd=bin_path, shell=True).wait()
@@ -276,21 +276,21 @@ class OdooGenerator:
                         cwd=f"{venv_path}/repos/{repo_name}",
                         shell=True,
                     ).wait()
-            if not any(x in repo_name for x in ["ait", "reinova", "liocreo"]):
-                requirements_path = os.path.join(
-                    venv_path, "repos", repo_name, "requirements.txt"
-                )
-                if os.path.isfile(requirements_path):
-                    subprocess.Popen(
-                        [
-                            f"uv pip install -r {requirements_path}",
-                        ],
-                        cwd=venv_path,
-                        shell=True,
-                    ).wait()
+            requirements_path = os.path.join(
+                venv_path, "repos", repo_name, "requirements.txt"
+            )
+            if os.path.isfile(requirements_path):
+                print(f"Installing requirements from {requirements_path}")
+                subprocess.Popen(
+                    [
+                        f"uv add --active --frozen -r {requirements_path}",
+                    ],
+                    cwd=venv_path,
+                    shell=True,
+                ).wait()
         # ensure python libraries are installed at required version
         commands = [
-            f"uv pip install -r requirements.txt",
+            f"uv add --active --frozen -r requirements.txt",
         ]
         for command in commands:
             subprocess.Popen(command, cwd=venv_path, shell=True).wait()
