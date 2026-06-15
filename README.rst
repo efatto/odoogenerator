@@ -2,53 +2,33 @@
 Odoo Generator
 ==============
 
-Questa applicazione effettua il download dei sorgenti Odoo e prepara un virtualenv.
+Questa applicazione effettua il download dei sorgenti Odoo, gestisce i repository aggiuntivi e prepara un ambiente virtuale utilizzando `uv`.
 
 Pre-requisiti:
 
 .. code-block:: bash
 
     sudo apt install libmysqlclient-dev
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+
+Utilizzo:
 
 .. code-block:: bash
 
-    curl https://pyenv.run | bash
-    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
-    echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
-    echo 'eval "$(pyenv init -)"' >> ~/.bashrc
+    ./main/odoogenerator.py --version 14.0
 
-Per usare questa funzionalità, eseguire:
+L'applicazione creerà in `~/Sviluppo/Odoo/odoo<versione>` un ambiente con Odoo, i repository configurati e il file `.odoorc`.
 
-.. code-block:: bash
+Opzioni:
 
-    python -m venv venv
-    source venv/bin/activate
-    pip install -r requirements.txt
-    ./main/odoogenerator.py --version[-V] 14.0 [--private|-P yes]
+* `-V, --version`: Versione di Odoo (es. 14.0, 16.0, 18.0). Default: 14.0.
+* `-P, --private yes`: Include i repository privati.
+* `-G, --gitaggregate yes`: Esegue `gitaggregate` durante la generazione.
+* `-S, --save-only yes`: Genera solo il file `.odoorc` senza creare l'ambiente.
+* `-T, --translate-repo <repo>`: Estrae le traduzioni `it.po` per il repository indicato.
 
-Questo creerà nella cartella `Sviluppo` dell'utente corrente una cartella `Odoo` con una sotto-cartella `odoo<versione>` in cui verrà installato Odoo alla versione presente nella configurazione e creato un file di configurazione `.odoorc`
+Configurazione:
+I file di configurazione (`.json` per i repository e `.txt` per i requirements) si trovano in `~/Sviluppo/srvmngt/odoogenerator_config/`.
 
-La configurazione è nella cartella dell'utente `./Sviluppo/srvmngt/odoogenerator_config` e si compone di due file:
-
-#. un file txt con i requirements aggiuntivi specifici (i requirements di Odoo sono già installati di default, oltre a quelli di l10n-italy, da verificare se installare anche quelli delle altre repositories)
-#. un file json con le specifiche per l'installazione.
-
-Ci sono delle opzioni alternative di avvio:
-
-Con il tag aggiuntivo `-S yes` viene solo generato il file `.odoorc` nella cartella della versione selezionata:
-
-.. code-block:: bash
-
-    -S
-
-Con il tag aggiuntivo `-T <repository>` vengono aggiornati i file di traduzione all'interno dei moduli nella cartella del repository della versione selezionata:
-
-.. code-block:: bash
-
-    -T <repository>
-
-Con il tag aggiuntivo `-G ['yes' | 'no]` viene eseguito il gitaggregate dei repository durante la generazione, in modo da avere il codice aggiornato con le PR impostate nel file :
-
-.. code-block:: bash
-
-    -G yes
+# TODO
+Nella progetto Odoo generato, il file pyproject.toml conterrà i requirements alle varie librerie con sia le versioni specifiche, che la versione generica del pacchetto quando sono nominate entrambe. In questo caso, le versioni generiche vanno rimosse manualmente, per proseguire l'avvio del progetto. In seguito si spera di rimuovere questo errore.
