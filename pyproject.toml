@@ -1,0 +1,11 @@
+[project]
+name = "odoogenerator"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "appdirs~=1.4.4",
+    "git-aggregator>=4.1",
+    "mysql-connector-python>=26.7.0",
+    "odoorpc>=0.10.1",
+    "pyyaml~=6.0.1",
+]
