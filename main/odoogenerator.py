@@ -213,7 +213,7 @@ class OdooGenerator:
         commands = [
             f"uv add --active --frozen -r {self.venv_path}/requirements.txt",
             f"uv add --active --frozen -r {self.venv_path}/odoo/requirements.txt",
-            f"uv pip install -e {self.venv_path}/odoo",
+            f"uv add --active --frozen --editable {self.venv_path}/odoo",
         ]
         for command in commands:
             subprocess.Popen(command, cwd=bin_path, shell=True).wait()
