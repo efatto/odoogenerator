@@ -15,6 +15,7 @@ import time
 import tempfile
 import yaml
 
+UV_PROJECT_ENVIRONMENT = os.environ.get("UV_PROJECT_ENVIRONMENT", ".venv")
 
 class OdooGenerator:
     def load_config(self, version, file_path=False):
@@ -149,7 +150,7 @@ class OdooGenerator:
         # todo add option to recreate venv (eg. to change python version) by removing
         #  .python-version and pyproject.toml (and removing folder venv_path/bin?)
         venv_path = self.venv_path
-        bin_path = os.path.join(venv_path, ".venv/bin/")
+        bin_path = os.path.join(venv_path, UV_PROJECT_ENVIRONMENT, "/bin/")
         if not os.path.isdir(venv_path):
             os.makedirs(venv_path)
         odoo_repo = "https://github.com/OCA/OCB.git"
@@ -318,7 +319,7 @@ class OdooGenerator:
             ]
         )
         bash_command = f"""
-{venv_path}/.venv/bin/python
+{venv_path}/{UV_PROJECT_ENVIRONMENT}/bin/python
 {venv_path}/odoo/{executable}
  {extra_commands or '-i base'}
  --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
