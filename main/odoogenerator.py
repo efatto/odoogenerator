@@ -1,6 +1,8 @@
 #!/usr/bin/env python
+from pathlib import Path
 
 from odoorpc.rpc import build_opener, CookieJar, HTTPCookieProcessor
+from configparser import ConfigParser
 from shutil import copy
 from urllib.request import HTTPSHandler
 import argparse
@@ -151,11 +153,9 @@ class OdooGenerator:
         #  .python-version and pyproject.toml (and removing folder project_path/bin?)
         project_path = self.project_path
         env_path = os.path.join(project_path, UV_PROJECT_ENVIRONMENT)
-        bin_path = os.path.join(env_path, ".venv", "bin")
+        bin_path = os.path.join(env_path, "bin")
         if not os.path.isdir(project_path):
             os.makedirs(project_path)
-        if not os.path.isdir(env_path):
-            os.makedirs(env_path)
         odoo_repo = "https://github.com/OCA/OCB.git"
         if (
             not os.path.isfile(os.path.join(project_path, "pyproject.toml"))
@@ -167,12 +167,13 @@ class OdooGenerator:
             for command in [
                 f"uv init --directory {project_path} --python "
                 f"'python=={self.python['version']}'",
-                f"uv venv {'--clear' if recreate else ''} --directory {env_path} "
-                f"--python {self.python['version']}",
+                f"uv venv {UV_PROJECT_ENVIRONMENT} {'--clear' if recreate else ''} "
+                f"--directory {project_path} --python {self.python['version']}",
             ]:
                 run(
                     command,
                     shell=True,
+                    cwd=project_path,
                 )
         python_version_file = os.path.join(project_path, ".python-version")
         if not os.path.isfile(python_version_file) or recreate:
@@ -226,7 +227,7 @@ class OdooGenerator:
             f"uv add --active --frozen --editable {self.project_path}/odoo --no-workspace",
         ]
         for command in commands:
-            run(command, cwd=bin_path, shell=True)
+            run(command, cwd=project_path, shell=True)
         repos = self.repositories
         if private:
             repos = self.all_repositories
@@ -300,16 +301,22 @@ class OdooGenerator:
                 )
         # ensure python libraries are installed at required version
         commands = [
-            f"uv add --active --frozen -r requirements.txt",
+            "uv add --active --frozen -r requirements.txt",
+            "uv sync --active",
         ]
         for command in commands:
-            run(command, cwd=project_path, shell=True)
-        self.start_odoo(save_config=True)
+            run(
+                command,
+                cwd=project_path,
+                shell=True,
+            )
+        self.start_odoo(env_path, save_config=True)
 
-    def start_odoo(self, save_config=False, extra_commands=False):
+    def start_odoo(self, env_path, save_config=False, extra_commands=False):
         """
         :param save_config: if True start odoo, save .odoorc and stop
         :param extra_commands: command to pass after executable
+        :param env_path: path to environment
         :return: nothing
         """
         project_path = self.project_path
@@ -327,54 +334,61 @@ class OdooGenerator:
                 )
             ]
         )
-        bash_command = f"""
-{project_path}/{UV_PROJECT_ENVIRONMENT}/.venv/bin/python
- {project_path}/odoo/{executable}
- {extra_commands or '-i base'}
- --addons-path={project_path}/odoo/addons,{project_path}/odoo/odoo/addons,{addons_path}
- --db_user={options['db_user']}
- --db_port={options['db_port']}
- --http-port={options['http_port']}
- --log-handler={options['log_handler']}
- --limit-memory-hard={options['limit_memory_hard']}
- --limit-memory-soft={options['limit_memory_soft']}
- --limit-time-cpu={options['limit_time_cpu']}
- --limit-time-real={options['limit_time_real']}
- --load={options['server_wide_modules']}
- -c {project_path}/.odoorc
-        """
+        bash_command = (
+            f"{project_path}/{UV_PROJECT_ENVIRONMENT}/bin/python "
+            f"{project_path}/odoo/{executable} "
+            f"{extra_commands or '-i base'} "
+            f"--addons-path={project_path}/odoo/addons,{project_path}/odoo/odoo/addons,"
+            f"{addons_path} "
+            f"--db_user={options['db_user']} "
+            f"--db_port={options['db_port']} "
+            f"--http-port={options['http_port']} "
+            f"--log-handler={options['log_handler']} "
+            f"--limit-memory-hard={options['limit_memory_hard']} "
+            f"--limit-memory-soft={options['limit_memory_soft']} "
+            f"--limit-time-cpu={options['limit_time_cpu']} "
+            f"--limit-time-real={options['limit_time_real']} "
+            f"--load={options['server_wide_modules']} "
+            f"-c {project_path}/.odoorc "
+        )
         if self.version != "7.0":
             bash_command += f"--data-dir={project_path}/data_dir "
         if save_config:
             bash_command += f" -s --stop"
+        env = os.environ.copy()
+        env.update({
+            "VIRTUAL_ENV": env_path,
+            "UV_PROJECT_ENVIRONMENT": env_path,
+            "PWD": env_path,
+            "PYTHONPATH": os.path.join(env_path, "bin", "python"),
+        })
         process = Popen(
-            bash_command.split(), stdout=PIPE, cwd=project_path
+            bash_command, stdout=PIPE, shell=True, env=env,
         )
         self.pid = process.pid
         if save_config:
             if os.path.isfile(os.path.join(self.path, ".odoorc")):
-                # move .odoorc from user home to Odoo path
+                # move default .odoorc from user home to Odoo path
                 run(["mv ~/.odoorc ./"], shell=True, cwd=project_path)
-            # remove line with osv_memory_age_limit
-            run(
-                ['sed -i "/^osv_memory_age_limit/d" .odoorc'], shell=True, cwd=project_path
-            )
-            # read .odoorc and add additional options
-            with open(os.path.join(project_path, ".odoorc")) as f:
-                odoorc_text = f.read()
-                f.close()
+            # remove line with osv_memory_age_limit if exists
+            config = ConfigParser()
+            path = Path(project_path)
+            config.read(path / ".odoorc")
+            if config.get("options", "osv_memory_age_limit", fallback=False):
+                config.remove_option("options", "osv_memory_age_limit")
+                with open(path / ".odoorc", "w") as configfile:
+                    config.write(configfile)
+            # add additional options
             if self.additional_options:
                 for additional_option in self.additional_options:
-                    if additional_option not in odoorc_text:
-                        run(
-                            [
-                                f'echo "{additional_option} = '
-                                f'{self.additional_options[additional_option]}"'
-                                f" >> .odoorc"
-                            ],
-                            shell=True,
-                            cwd=project_path,
+                    if additional_option not in config.get("options", additional_option, fallback=False):
+                        config.set(
+                            "options",
+                            additional_option,
+                            self.additional_options[additional_option],
                         )
+                        with open(path / ".odoorc", "w") as configfile:
+                            config.write(configfile)
 
     def create_it_po(self, module, repo):
         """
