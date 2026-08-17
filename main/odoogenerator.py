@@ -9,13 +9,13 @@ import odoorpc
 import os
 import signal
 import ssl
-import subprocess
+from subprocess import PIPE, Popen, run
 import sys
 import time
 import tempfile
 import yaml
 
-UV_PROJECT_ENVIRONMENT = os.environ.get("UV_PROJECT_ENVIRONMENT", ".venv")
+UV_PROJECT_ENVIRONMENT = os.environ.get("UV_PROJECT_ENVIRONMENT", "venv")
 
 class OdooGenerator:
     def load_config(self, version, file_path=False):
@@ -113,7 +113,7 @@ class OdooGenerator:
         self.path = os.path.expanduser("~")
         self.version = version
         self.base_path = os.path.join(self.path, "Sviluppo", "Odoo")
-        self.venv_path = os.path.join(
+        self.project_path = os.path.join(
             self.base_path,
             f"odoo{self.version}",
         )
@@ -127,7 +127,7 @@ class OdooGenerator:
         for repo, branch, repo_url, gitagg, parts, part in self.get_repositories_and_branches(
             branch, singlerepo, config_list
         ):
-            tmp_filename = tempfile.mktemp(suffix=".yml")
+            tmp_filename = tempfile.mkstemp(suffix=".yml")
             try:
                 with open(tmp_filename, "w+") as writer:
                     file_dict = [{x: parts[x]} for x in parts if x == part][0]
@@ -140,54 +140,63 @@ class OdooGenerator:
                         f"{tmp_filename}",
                     ]
                     for command in bash_command:
-                        subprocess.Popen(
-                            command, stdout=subprocess.PIPE, shell=True
-                        ).wait()
+                        run(
+                            command, stdout=PIPE, shell=True
+                        )
             finally:
                 os.unlink(tmp_filename)
 
     def create_venv(self, branch=False, private=False, gitaggregate="no", recreate=False):
         # todo add option to recreate venv (eg. to change python version) by removing
-        #  .python-version and pyproject.toml (and removing folder venv_path/bin?)
-        venv_path = self.venv_path
-        bin_path = os.path.join(venv_path, UV_PROJECT_ENVIRONMENT, "/bin/")
-        if not os.path.isdir(venv_path):
-            os.makedirs(venv_path)
+        #  .python-version and pyproject.toml (and removing folder project_path/bin?)
+        project_path = self.project_path
+        env_path = os.path.join(project_path, UV_PROJECT_ENVIRONMENT)
+        bin_path = os.path.join(env_path, ".venv", "bin")
+        if not os.path.isdir(project_path):
+            os.makedirs(project_path)
+        if not os.path.isdir(env_path):
+            os.makedirs(env_path)
         odoo_repo = "https://github.com/OCA/OCB.git"
-        if not os.path.isfile(os.path.join(venv_path, "pyproject.toml")) or recreate:
+        if (
+            not os.path.isfile(os.path.join(project_path, "pyproject.toml"))
+            or not os.path.isfile(bin_path)
+            or recreate
+        ):
+            if recreate:
+                os.remove(os.path.join(project_path, "pyproject.toml"))
             for command in [
-                f"uv init --directory {venv_path} --python "
+                f"uv init --directory {project_path} --python "
                 f"'python=={self.python['version']}'",
-                f"uv venv --python {self.python['version']}",
+                f"uv venv {'--clear' if recreate else ''} --directory {env_path} "
+                f"--python {self.python['version']}",
             ]:
-                subprocess.Popen(
+                run(
                     command,
                     shell=True,
-                    cwd=venv_path,  # self.base_path?
-                ).wait()
-        python_version_file = os.path.join(venv_path, ".python-version")
+                )
+        python_version_file = os.path.join(project_path, ".python-version")
         if not os.path.isfile(python_version_file) or recreate:
             with open(python_version_file, "w") as writer:
                 writer.write(f"{self.python['version']}")
             writer.close()
-        if not os.path.isdir(os.path.join(venv_path, "odoo")):
-            subprocess.Popen(
+        if not os.path.isdir(os.path.join(project_path, "odoo")):
+            run(
                 [
                     f"git clone --branch {branch or self.version} {odoo_repo} "
                     f"--depth 1 odoo"
                 ],
-                cwd=venv_path,
+                cwd=project_path,
                 shell=True,
-            ).wait()
+            )
         else:
             # I presume odoo branch is always the same
-            subprocess.Popen(
+            run(
                 [
                     "git pull --rebase",
                 ],
-                cwd=f"{venv_path}/odoo",
+                cwd=f"{project_path}/odoo",
                 shell=True,
-            ).wait()
+            )
         uv_override_deps = []
         if self.version in ["14.0", "15.0", "16.0"]:
             uv_override_deps.append("XlsxWriter==3.2.9")
@@ -202,22 +211,22 @@ class OdooGenerator:
                 ]
             )
         if uv_override_deps:
-            if "tool.uv" not in open(os.path.join(venv_path, "pyproject.toml")).read():
-                with open(os.path.join(venv_path, "pyproject.toml"), "a") as f:
+            if "tool.uv" not in open(os.path.join(project_path, "pyproject.toml")).read():
+                with open(os.path.join(project_path, "pyproject.toml"), "a") as f:
                     f.write("[tool.uv]\n")
                     f.write(f"override-dependencies = {str(uv_override_deps)} ")
                     f.close()
         copy(
             os.path.join(self.config_path, f"requirements_{self.version}.txt"),
-            os.path.join(venv_path, "requirements.txt"),
+            os.path.join(project_path, "requirements.txt"),
         )
         commands = [
-            f"uv add --active --frozen -r {self.venv_path}/requirements.txt",
-            f"uv add --active --frozen -r {self.venv_path}/odoo/requirements.txt",
-            f"uv add --active --frozen --editable {self.venv_path}/odoo",
+            f"uv add --active --frozen -r {self.project_path}/requirements.txt",
+            f"uv add --active --frozen -r {self.project_path}/odoo/requirements.txt",
+            f"uv add --active --frozen --editable {self.project_path}/odoo --no-workspace",
         ]
         for command in commands:
-            subprocess.Popen(command, cwd=bin_path, shell=True).wait()
+            run(command, cwd=bin_path, shell=True)
         repos = self.repositories
         if private:
             repos = self.all_repositories
@@ -228,27 +237,27 @@ class OdooGenerator:
             else:
                 repo = repo_url
                 repo_version = self.version
-            if not os.path.isdir("%s/repos/%s" % (venv_path, repo_name)):
-                subprocess.Popen(
+            if not os.path.isdir("%s/repos/%s" % (project_path, repo_name)):
+                run(
                     [
                         f"git clone --branch {repo_version} {repo} "
-                        f"{venv_path}/repos/{repo_name}",
+                        f"{project_path}/repos/{repo_name}",
                     ],
-                    cwd=venv_path,
+                    cwd=project_path,
                     shell=True,
-                ).wait()
+                )
             if gitaggregate == "yes":
                 self.git_aggregate(
                     repo_version, repo_name, config_list=["repos.yml"])
-            if os.path.isdir("%s/repos/%s" % (venv_path, repo_name)):
+            if os.path.isdir("%s/repos/%s" % (project_path, repo_name)):
                 # Check if current remote is different from config repo
                 check_remote_cmd = "git remote get-url origin"
-                process = subprocess.Popen(
+                process = Popen(
                     check_remote_cmd,
-                    cwd=f"{venv_path}/repos/{repo_name}",
+                    cwd=f"{project_path}/repos/{repo_name}",
                     shell=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
+                    stdout=PIPE,
+                    stderr=PIPE,
                 )
                 stdout, _ = process.communicate()
                 current_remote = stdout.decode().strip()
@@ -260,11 +269,11 @@ class OdooGenerator:
                         "git fetch origin",
                         f"git branch --set-upstream-to=origin/{repo_version} {repo_version}",
                     ]:
-                        subprocess.Popen(
+                        run(
                             command,
-                            cwd=f"{venv_path}/repos/{repo_name}",
+                            cwd=f"{project_path}/repos/{repo_name}",
                             shell=True,
-                        ).wait()
+                        )
 
                 for command in [
                     "git fetch origin",
@@ -272,29 +281,29 @@ class OdooGenerator:
                     f"git checkout {repo_version}",
                     "git pull --rebase",
                 ]:
-                    subprocess.Popen(
+                    run(
                         command,
-                        cwd=f"{venv_path}/repos/{repo_name}",
+                        cwd=f"{project_path}/repos/{repo_name}",
                         shell=True,
-                    ).wait()
+                    )
             requirements_path = os.path.join(
-                venv_path, "repos", repo_name, "requirements.txt"
+                project_path, "repos", repo_name, "requirements.txt"
             )
             if os.path.isfile(requirements_path):
                 print(f"Installing requirements from {requirements_path}")
-                subprocess.Popen(
+                run(
                     [
                         f"uv add --active --frozen -r {requirements_path}",
                     ],
-                    cwd=venv_path,
+                    cwd=project_path,
                     shell=True,
-                ).wait()
+                )
         # ensure python libraries are installed at required version
         commands = [
             f"uv add --active --frozen -r requirements.txt",
         ]
         for command in commands:
-            subprocess.Popen(command, cwd=venv_path, shell=True).wait()
+            run(command, cwd=project_path, shell=True)
         self.start_odoo(save_config=True)
 
     def start_odoo(self, save_config=False, extra_commands=False):
@@ -303,26 +312,26 @@ class OdooGenerator:
         :param extra_commands: command to pass after executable
         :return: nothing
         """
-        venv_path = self.venv_path
+        project_path = self.project_path
         options = self.options
         executable = (
             "openerp-server" if self.version in ["7.0", "8.0", "9.0"] else "odoo-bin"
         )
         addons_path = ",".join(
             [
-                f"{venv_path}/repos/{repo}"
+                f"{project_path}/repos/{repo}"
                 for repo in self.all_repositories
                 if any(
                     "__manifest__.py" in f
-                    for r, d, f in os.walk(os.path.join(venv_path, "repos", repo))
+                    for r, d, f in os.walk(os.path.join(project_path, "repos", repo))
                 )
             ]
         )
         bash_command = f"""
-{venv_path}/{UV_PROJECT_ENVIRONMENT}/bin/python
-{venv_path}/odoo/{executable}
+{project_path}/{UV_PROJECT_ENVIRONMENT}/.venv/bin/python
+ {project_path}/odoo/{executable}
  {extra_commands or '-i base'}
- --addons-path={venv_path}/odoo/addons,{venv_path}/odoo/odoo/addons,{addons_path}
+ --addons-path={project_path}/odoo/addons,{project_path}/odoo/odoo/addons,{addons_path}
  --db_user={options['db_user']}
  --db_port={options['db_port']}
  --http-port={options['http_port']}
@@ -332,43 +341,40 @@ class OdooGenerator:
  --limit-time-cpu={options['limit_time_cpu']}
  --limit-time-real={options['limit_time_real']}
  --load={options['server_wide_modules']}
- -c {venv_path}/.odoorc
+ -c {project_path}/.odoorc
         """
         if self.version != "7.0":
-            bash_command += f"--data-dir={venv_path}/data_dir "
+            bash_command += f"--data-dir={project_path}/data_dir "
         if save_config:
             bash_command += f" -s --stop"
-        process = subprocess.Popen(
-            bash_command.split(), stdout=subprocess.PIPE, cwd=venv_path
+        process = Popen(
+            bash_command.split(), stdout=PIPE, cwd=project_path
         )
         self.pid = process.pid
         if save_config:
-            process.wait()
             if os.path.isfile(os.path.join(self.path, ".odoorc")):
                 # move .odoorc from user home to Odoo path
-                subprocess.Popen(["mv ~/.odoorc ./"], shell=True, cwd=venv_path).wait()
+                run(["mv ~/.odoorc ./"], shell=True, cwd=project_path)
             # remove line with osv_memory_age_limit
-            subprocess.Popen(
-                ['sed -i "/^osv_memory_age_limit/d" .odoorc'], shell=True, cwd=venv_path
-            ).wait()
+            run(
+                ['sed -i "/^osv_memory_age_limit/d" .odoorc'], shell=True, cwd=project_path
+            )
             # read .odoorc and add additional options
-            with open(os.path.join(venv_path, ".odoorc")) as f:
+            with open(os.path.join(project_path, ".odoorc")) as f:
                 odoorc_text = f.read()
                 f.close()
             if self.additional_options:
                 for additional_option in self.additional_options:
                     if additional_option not in odoorc_text:
-                        subprocess.Popen(
+                        run(
                             [
                                 f'echo "{additional_option} = '
                                 f'{self.additional_options[additional_option]}"'
                                 f" >> .odoorc"
                             ],
                             shell=True,
-                            cwd=venv_path,
-                        ).wait()
-        if extra_commands and "stop" in extra_commands:
-            process.wait()
+                            cwd=project_path,
+                        )
 
     def create_it_po(self, module, repo):
         """
@@ -382,15 +388,15 @@ class OdooGenerator:
             f'createdb -p {self.options["db_port"]} demo10',
         ]
         for command in commands:
-            subprocess.Popen(command, shell=True, cwd=self.venv_path).wait()
+            run(command, shell=True, cwd=self.project_path)
         extra_commands = (
             f"-c .odoorc -i {module} --load-language=it_IT -d demo10 --stop"
         )
         self.start_odoo(extra_commands=extra_commands)
         extra_commands = (
-            f"-c {self.venv_path}/.odoorc -l it_IT --db_port={self.options['db_port']} "
+            f"-c {self.project_path}/.odoorc -l it_IT --db_port={self.options['db_port']} "
             f"--modules={module} -d demo10 "
-            f"--i18n-export={self.venv_path}/repos/{repo}/{module}/i18n/it.po "
+            f"--i18n-export={self.project_path}/repos/{repo}/{module}/i18n/it.po "
             f"--stop"
         )
         self.start_odoo(extra_commands=extra_commands)
@@ -398,9 +404,9 @@ class OdooGenerator:
     def create_it_po_for_repo(self, repo):
         # recreate all it.po files for the selected repo
         for dirname in os.listdir(
-            os.path.join(self.venv_path, "repos", repo)
+            os.path.join(self.project_path, "repos", repo)
         ):
-            if os.path.isdir(os.path.join(self.venv_path, "repos", repo, dirname)):
+            if os.path.isdir(os.path.join(self.project_path, "repos", repo, dirname)):
                 if not dirname.startswith((".", "_", "setup")):
                     self.create_it_po(dirname, repo)
 
@@ -487,6 +493,13 @@ if __name__ == "__main__":
             choices=['yes'],
             default='no',
         )
+        parser.add_argument(
+            "-R",
+            "--recreate",
+            help="Recreate env",
+            choices=['yes'],
+            default='no',
+        )
         args = parser.parse_args()
         o = OdooGenerator(version=args.version)
         if args.translate_repo:
@@ -494,6 +507,10 @@ if __name__ == "__main__":
         elif args.save_only:
             o.start_odoo(save_config=True)
         else:
-            o.create_venv(private=args.private, gitaggregate=args.gitaggregate)
+            o.create_venv(
+                private=args.private,
+                gitaggregate=args.gitaggregate,
+                recreate=args.recreate == 'yes',
+            )
     except Exception as e:
         print("Error: " + str(e))
