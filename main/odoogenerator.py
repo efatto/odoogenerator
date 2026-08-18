@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import subprocess
 from pathlib import Path
 
 from odoorpc.rpc import build_opener, CookieJar, HTTPCookieProcessor
@@ -253,15 +254,14 @@ class OdooGenerator:
             if os.path.isdir("%s/repos/%s" % (project_path, repo_name)):
                 # Check if current remote is different from config repo
                 check_remote_cmd = "git remote get-url origin"
-                process = Popen(
+                process = subprocess.run(
                     check_remote_cmd,
                     cwd=f"{project_path}/repos/{repo_name}",
                     shell=True,
                     stdout=PIPE,
-                    stderr=PIPE,
+                    text=True,
                 )
-                stdout, _ = process.communicate()
-                current_remote = stdout.decode().strip()
+                current_remote = process.stdout.strip()
                 if current_remote and current_remote != repo:
                     # Set current remote as upstream and new repo as origin
                     for command in [
@@ -310,16 +310,17 @@ class OdooGenerator:
                 cwd=project_path,
                 shell=True,
             )
-        self.start_odoo(env_path, save_config=True)
+        self.start_odoo(save_config=True)
+        print(f"Python libraries installed successfully in env {env_path}.")
 
-    def start_odoo(self, env_path, save_config=False, extra_commands=False):
+    def start_odoo(self, save_config=False, extra_commands=False):
         """
         :param save_config: if True start odoo, save .odoorc and stop
         :param extra_commands: command to pass after executable
-        :param env_path: path to environment
         :return: nothing
         """
         project_path = self.project_path
+        env_path = os.path.join(project_path, UV_PROJECT_ENVIRONMENT)
         options = self.options
         executable = (
             "openerp-server" if self.version in ["7.0", "8.0", "9.0"] else "odoo-bin"
@@ -335,7 +336,7 @@ class OdooGenerator:
             ]
         )
         bash_command = (
-            f"{project_path}/{UV_PROJECT_ENVIRONMENT}/bin/python "
+            f"{env_path}/bin/python "
             f"{project_path}/odoo/{executable} "
             f"{extra_commands or '-i base'} "
             f"--addons-path={project_path}/odoo/addons,{project_path}/odoo/odoo/addons,"
@@ -361,11 +362,19 @@ class OdooGenerator:
             "UV_PROJECT_ENVIRONMENT": env_path,
             "PWD": env_path,
             "PYTHONPATH": os.path.join(env_path, "bin", "python"),
+            "PATH": ":".join(
+                [
+                    env_path,
+                    os.path.join(env_path, "bin"),
+                    "/bin",
+                    "/usr/bin",
+                    os.path.join(os.path.expanduser("~"), ".local", "bin"),
+                ]
+            )
         })
-        process = Popen(
-            bash_command, stdout=PIPE, shell=True, env=env,
+        run(
+            bash_command, shell=True, env=env, cwd=project_path
         )
-        self.pid = process.pid
         if save_config:
             if os.path.isfile(os.path.join(self.path, ".odoorc")):
                 # move default .odoorc from user home to Odoo path
@@ -389,6 +398,7 @@ class OdooGenerator:
                         )
                         with open(path / ".odoorc", "w") as configfile:
                             config.write(configfile)
+        print("Updated .odoorc file with additional options.")
 
     def create_it_po(self, module, repo):
         """
