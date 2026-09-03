@@ -233,6 +233,7 @@ class OdooGenerator:
         if private:
             repos = self.all_repositories
         for repo_name in repos:
+            cwd_path = f"{project_path}/repos/{repo_name}"
             repo_url = repos.get(repo_name)
             if " " in repo_url:
                 repo, repo_version = repo_url.split(" ")
@@ -242,8 +243,7 @@ class OdooGenerator:
             if not os.path.isdir("%s/repos/%s" % (project_path, repo_name)):
                 run(
                     [
-                        f"git clone --branch {repo_version} {repo} "
-                        f"{project_path}/repos/{repo_name}",
+                        f"git clone --branch {repo_version} {repo} {cwd_path}",
                     ],
                     cwd=project_path,
                     shell=True,
@@ -256,7 +256,7 @@ class OdooGenerator:
                 check_remote_cmd = "git remote get-url origin"
                 process = subprocess.run(
                     check_remote_cmd,
-                    cwd=f"{project_path}/repos/{repo_name}",
+                    cwd=cwd_path,
                     shell=True,
                     stdout=PIPE,
                     text=True,
@@ -272,7 +272,7 @@ class OdooGenerator:
                     ]:
                         run(
                             command,
-                            cwd=f"{project_path}/repos/{repo_name}",
+                            cwd=cwd_path,
                             shell=True,
                         )
 
@@ -280,11 +280,13 @@ class OdooGenerator:
                     "git fetch origin",
                     f"git reset --hard origin/{repo_version}",
                     f"git checkout {repo_version}",
-                    "git pull --rebase",
+                    "git pull",
                 ]:
+                    print(
+                        f"Running command: {command} in {cwd_path}")
                     run(
                         command,
-                        cwd=f"{project_path}/repos/{repo_name}",
+                        cwd=cwd_path,
                         shell=True,
                     )
             requirements_path = os.path.join(
