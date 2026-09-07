@@ -130,24 +130,24 @@ class OdooGenerator:
         for repo, branch, repo_url, gitagg, parts, part in self.get_repositories_and_branches(
             branch, singlerepo, config_list
         ):
-            tmp_filename = tempfile.mkstemp(suffix=".yml")
+            file_fd, file_path = tempfile.mkstemp(suffix=".yml")
             try:
-                with open(tmp_filename, "w+") as writer:
+                with open(file_path, "w+") as writer:
                     file_dict = [{x: parts[x]} for x in parts if x == part][0]
                     yaml.dump(file_dict, writer)
                     bash_command = [
                         f'sed -i "s/target: pretecno/target: {gitaggregate_target}/" '
-                        f'{tmp_filename}',
-                        f"gitaggregate -p -c {tmp_filename}",
+                        f'{file_path}',
+                        f"gitaggregate -p -c {file_path}",
                         f"sed -i 's/target: {gitaggregate_target}/target: pretecno/' "
-                        f"{tmp_filename}",
+                        f"{file_path}",
                     ]
                     for command in bash_command:
                         run(
                             command, stdout=PIPE, shell=True
                         )
             finally:
-                os.unlink(tmp_filename)
+                os.unlink(file_path)
 
     def create_venv(self, branch=False, private=False, gitaggregate="no", recreate=False):
         # todo add option to recreate venv (eg. to change python version) by removing
@@ -233,6 +233,7 @@ class OdooGenerator:
         if private:
             repos = self.all_repositories
         for repo_name in repos:
+            print(f"Processing repository: {repo_name}")
             cwd_path = f"{project_path}/repos/{repo_name}"
             repo_url = repos.get(repo_name)
             if " " in repo_url:
@@ -282,13 +283,16 @@ class OdooGenerator:
                     f"git checkout {repo_version}",
                     "git pull",
                 ]:
-                    print(
-                        f"Running command: {command} in {cwd_path}")
-                    run(
-                        command,
-                        cwd=cwd_path,
-                        shell=True,
-                    )
+                    time.sleep(3)
+                    try:
+                        run(
+                            command,
+                            cwd=cwd_path,
+                            shell=True,
+                            check=True,
+                        )
+                    except Exception as e:
+                        print(f"Error running command: {command} in {cwd_path}. Error: {e}")
             requirements_path = os.path.join(
                 project_path, "repos", repo_name, "requirements.txt"
             )

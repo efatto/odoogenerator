@@ -15,7 +15,7 @@ Utilizzo:
 
 .. code-block:: bash
 
-    ./main/odoogenerator.py --version 14.0
+    uv run ./main/odoogenerator.py --version 14.0
 
 L'applicazione creerà in `~/Sviluppo/Odoo/odoo<versione>` un ambiente con Odoo, i repository configurati e il file `.odoorc`.
 
