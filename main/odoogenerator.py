@@ -226,9 +226,10 @@ class OdooGenerator:
             os.path.join(project_path, "requirements.txt"),
         )
         commands = [
-            f"uv add --active --frozen -r {self.project_path}/requirements.txt",
-            f"uv add --active --frozen -r {self.project_path}/odoo/requirements.txt",
-            f"uv add --active --frozen --editable {self.project_path}/odoo --no-workspace",
+            f"uv add --active --frozen -r requirements.txt",
+            f"uv add --active --frozen -r odoo/requirements.txt",
+            f"uv add --active --frozen --editable ./odoo --no-workspace",
+            f"uv sync --active",
         ]
         for command in commands:
             run(command, cwd=project_path, shell=True)
@@ -280,33 +281,34 @@ class OdooGenerator:
                             shell=True,
                         )
 
-                if bypass_update:
-                    continue
-
-                for command in [
-                    "git fetch origin",
-                    f"git reset --hard origin/{repo_version}",
-                    f"git checkout {repo_version}",
-                    "git pull",
-                ]:
-                    time.sleep(3)
-                    try:
-                        run(
-                            command,
-                            cwd=cwd_path,
-                            shell=True,
-                            check=True,
-                        )
-                    except Exception as e:
-                        print(f"Error running command: {command} in {cwd_path}. Error: {e}")
+                if not bypass_update:
+                    for command in [
+                        "git fetch origin",
+                        f"git reset --hard origin/{repo_version}",
+                        f"git checkout {repo_version}",
+                        "git pull",
+                    ]:
+                        time.sleep(3)
+                        try:
+                            run(
+                                command,
+                                cwd=cwd_path,
+                                shell=True,
+                                check=True,
+                            )
+                        except Exception as e:
+                            print(f"Error running command: {command} in {cwd_path}. Error: {e}")
             requirements_path = os.path.join(
                 project_path, "repos", repo_name, "requirements.txt"
             )
-            if os.path.isfile(requirements_path):
+            if os.path.isfile(requirements_path) and repo_name not in [
+                "rest-framework",
+            ]:
                 print(f"Installing requirements from {requirements_path}")
                 run(
                     [
                         f"uv add --active --frozen -r {requirements_path}",
+                        f"uv sync --active",
                     ],
                     cwd=project_path,
                     shell=True,
