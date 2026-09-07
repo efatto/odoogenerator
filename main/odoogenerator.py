@@ -19,6 +19,8 @@ import tempfile
 import yaml
 
 UV_PROJECT_ENVIRONMENT = os.environ.get("UV_PROJECT_ENVIRONMENT", "venv")
+if "/" in UV_PROJECT_ENVIRONMENT:
+    UV_PROJECT_ENVIRONMENT = UV_PROJECT_ENVIRONMENT.split("/")[-1]
 
 class OdooGenerator:
     def load_config(self, version, file_path=False):
@@ -149,7 +151,8 @@ class OdooGenerator:
             finally:
                 os.unlink(file_path)
 
-    def create_venv(self, branch=False, private=False, gitaggregate="no", recreate=False):
+    def create_venv(self, branch=False, private=False, gitaggregate="no",
+                    recreate=False, bypass_update=False):
         # todo add option to recreate venv (eg. to change python version) by removing
         #  .python-version and pyproject.toml (and removing folder project_path/bin?)
         project_path = self.project_path
@@ -163,7 +166,7 @@ class OdooGenerator:
             or not os.path.isfile(bin_path)
             or recreate
         ):
-            if recreate:
+            if recreate and os.path.isfile(os.path.join(project_path, "pyproject.toml")):
                 os.remove(os.path.join(project_path, "pyproject.toml"))
             for command in [
                 f"uv init --directory {project_path} --python "
@@ -277,6 +280,9 @@ class OdooGenerator:
                             shell=True,
                         )
 
+                if bypass_update:
+                    continue
+
                 for command in [
                     "git fetch origin",
                     f"git reset --hard origin/{repo_version}",
@@ -342,7 +348,7 @@ class OdooGenerator:
             ]
         )
         bash_command = (
-            f"{env_path}/bin/python "
+            f"uv run {env_path}/bin/python "
             f"{project_path}/odoo/{executable} "
             f"{extra_commands or '-i base'} "
             f"--addons-path={project_path}/odoo/addons,{project_path}/odoo/odoo/addons,"
@@ -395,8 +401,12 @@ class OdooGenerator:
                     config.write(configfile)
             # add additional options
             if self.additional_options:
-                for additional_option in self.additional_options:
-                    if additional_option not in config.get("options", additional_option, fallback=False):
+                additional_options = list(self.additional_options)
+                for additional_option in additional_options:
+                    if not config.has_option("options", additional_option) or (
+                        additional_option
+                        not in config.get("options", additional_option, fallback=False)
+                    ):
                         config.set(
                             "options",
                             additional_option,
@@ -530,6 +540,13 @@ if __name__ == "__main__":
             choices=['yes'],
             default='no',
         )
+        parser.add_argument(
+            "-B",
+            "--bypass-update",
+            help="Bypass update repos",
+            choices=['yes'],
+            default='no',
+        )
         args = parser.parse_args()
         o = OdooGenerator(version=args.version)
         if args.translate_repo:
@@ -541,6 +558,7 @@ if __name__ == "__main__":
                 private=args.private,
                 gitaggregate=args.gitaggregate,
                 recreate=args.recreate == 'yes',
+                bypass_update=args.bypass_update == 'yes',
             )
     except Exception as e:
         print("Error: " + str(e))
